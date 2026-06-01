@@ -27,6 +27,8 @@ export type SessionsState = {
   sessionsCheckpointLoadingKey: string | null;
   sessionsCheckpointBusyKey: string | null;
   sessionsCheckpointErrorByKey: Record<string, string>;
+  /** Currently selected agent id — passed to sessions.list for server-side filtering. */
+  agentsSelectedId?: string | null;
 };
 
 function checkpointSummarySignature(
@@ -166,6 +168,9 @@ export async function loadSessions(
     }
     if (limit > 0) {
       params.limit = limit;
+    }
+    if (state.agentsSelectedId) {
+      params.agentId = state.agentsSelectedId;
     }
     const res = await client.request<SessionsListResult | undefined>("sessions.list", params);
     if (res) {
