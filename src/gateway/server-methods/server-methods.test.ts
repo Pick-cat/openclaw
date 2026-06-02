@@ -636,12 +636,13 @@ describe("waitForAgentJob", () => {
         stream: "lifecycle",
         data: { phase: "start", startedAt: 100 },
       });
-      // Emit an aborted end without endedAt — a transient/correctable abort that
-      // the retry grace should keep from becoming terminal too early.
+      // Emit an aborted end with endedAt but without timeoutPhase. This is a
+      // correctable abort that the retry grace should keep from becoming
+      // terminal too early.
       emitAgentEvent({
         runId,
         stream: "lifecycle",
-        data: { phase: "end", startedAt: 100, aborted: true },
+        data: { phase: "end", startedAt: 100, endedAt: 200, aborted: true },
       });
 
       await vi.advanceTimersByTimeAsync(6_000);
@@ -649,12 +650,23 @@ describe("waitForAgentJob", () => {
       const result = await waitPromise;
       expect(result).toBeNull();
 
-      // The grace timer should still record the snapshot so a later wait
-      // (after the grace expires) returns the cached terminal result.
-      await vi.advanceTimersByTimeAsync(15_000);
-      const cached = await waitForAgentJob({ runId, timeoutMs: 1_000 });
-      expect(cached).not.toBeNull();
-      expect(cached?.status).toBe("timeout");
+      // A later start event before the grace expires should clear the pending
+      // timeout and allow a successful recovery.
+      await vi.advanceTimersByTimeAsync(3_000);
+      emitAgentEvent({
+        runId,
+        stream: "lifecycle",
+        data: { phase: "start", startedAt: 300 },
+      });
+      emitAgentEvent({
+        runId,
+        stream: "lifecycle",
+        data: { phase: "end", startedAt: 300, endedAt: 400 },
+      });
+
+      const recovered = await waitForAgentJob({ runId, timeoutMs: 1_000 });
+      expect(recovered).not.toBeNull();
+      expect(recovered?.status).toBe("ok");
     } finally {
       vi.clearAllTimers();
       vi.useRealTimers();

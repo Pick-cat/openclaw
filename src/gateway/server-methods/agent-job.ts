@@ -474,14 +474,14 @@ export async function waitForAgentJob(params: {
         return;
       }
       const pendingTimeout = getPendingAgentRunTimeout(runId);
-      // Only forward hard timeout snapshots that carry an endedAt before the
-      // retry grace expires; transient aborts without endedAt stay
-      // correctable via the pending timeout grace timer.
-      finish(
-        pendingTimeout && typeof pendingTimeout.snapshot.endedAt === "number"
-          ? pendingTimeout.snapshot
-          : null,
-      );
+      // Only forward hard timeouts where the provider was reached before the
+      // run was aborted (timeoutPhase is set). Transient aborts without
+      // provider attribution remain correctable via the grace timer.
+      if (pendingTimeout && typeof pendingTimeout.snapshot.timeoutPhase === "string") {
+        finish(pendingTimeout.snapshot);
+        return;
+      }
+      finish(null);
     }, timeoutMs);
     const onAbort: (() => void) | undefined = () => finish(null);
     signal?.addEventListener("abort", onAbort, { once: true });
