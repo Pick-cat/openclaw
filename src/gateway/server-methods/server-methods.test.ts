@@ -625,10 +625,10 @@ describe("waitForAgentJob", () => {
     }
   });
 
-  it("does not return a transient abort snapshot before the timeout grace expires", async () => {
+  it("keeps soft timeout phases correctable before the retry grace expires", async () => {
     vi.useFakeTimers();
     try {
-      const runId = `run-transient-abort-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const runId = `run-soft-queue-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const waitPromise = waitForAgentJob({ runId, timeoutMs: 5_000 });
 
       emitAgentEvent({
@@ -636,13 +636,18 @@ describe("waitForAgentJob", () => {
         stream: "lifecycle",
         data: { phase: "start", startedAt: 100 },
       });
-      // Emit an aborted end with endedAt but without timeoutPhase. This is a
-      // correctable abort that the retry grace should keep from becoming
-      // terminal too early.
+      // Emit a queue timeout — a soft phase that the retry grace should keep
+      // correctable. Only preflight / provider / post_turn are hard timeouts.
       emitAgentEvent({
         runId,
         stream: "lifecycle",
-        data: { phase: "end", startedAt: 100, endedAt: 200, aborted: true },
+        data: {
+          phase: "end",
+          startedAt: 100,
+          endedAt: 200,
+          aborted: true,
+          timeoutPhase: "queue",
+        },
       });
 
       await vi.advanceTimersByTimeAsync(6_000);

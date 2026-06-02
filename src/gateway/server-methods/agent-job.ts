@@ -1,5 +1,6 @@
 import {
   buildAgentRunTerminalOutcome,
+  isHardAgentRunTimeoutPhase,
   mergeAgentRunTerminalOutcome,
   type AgentRunTerminalOutcome,
 } from "../../agents/agent-run-terminal-outcome.js";
@@ -474,10 +475,10 @@ export async function waitForAgentJob(params: {
         return;
       }
       const pendingTimeout = getPendingAgentRunTimeout(runId);
-      // Only forward hard timeouts where the provider was reached before the
-      // run was aborted (timeoutPhase is set). Transient aborts without
-      // provider attribution remain correctable via the grace timer.
-      if (pendingTimeout && typeof pendingTimeout.snapshot.timeoutPhase === "string") {
+      // Only forward hard timeouts (preflight / provider / post_turn).
+      // Soft phases like queue and gateway_draining remain correctable
+      // via the pending timeout grace timer.
+      if (pendingTimeout && isHardAgentRunTimeoutPhase(pendingTimeout.snapshot.timeoutPhase)) {
         finish(pendingTimeout.snapshot);
         return;
       }
