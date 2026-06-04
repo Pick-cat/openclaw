@@ -1896,7 +1896,7 @@
 }
 
 .chat-session-picker__option:hover,
-.chat-session-picker__option:focus-visible {
+.chat-session-picker__option:focus-within {
   background: var(--bg-hover);
   border-color: color-mix(in srgb, var(--border) 78%, transparent);
 }
@@ -1904,6 +1904,31 @@
 .chat-session-picker__option--selected {
   background: color-mix(in srgb, var(--accent-subtle) 72%, transparent);
   border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.chat-session-picker__option--editing {
+  align-items: stretch;
+}
+
+.chat-session-picker__option-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-session-picker__option-button:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .chat-session-picker__option-main {
@@ -1944,6 +1969,29 @@
   stroke: currentColor;
   fill: none;
   stroke-width: 1.5px;
+}
+
+.chat-session-picker__rename-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chat-session-picker__rename-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--input-bg, var(--bg-elevated));
+  color: var(--text);
+  font: inherit;
+}
+
+.chat-session-picker__option-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .chat-session-picker__status {

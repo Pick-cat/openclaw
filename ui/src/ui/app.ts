@@ -88,6 +88,7 @@ import {
   type RealtimeTalkStatus,
 } from "./chat/realtime-talk.ts";
 import type { ChatRunUiStatus } from "./chat/run-lifecycle.ts";
+import { closeChatSessionPicker, forceCloseChatSessionPicker } from "./chat/session-controls.ts";
 import type { ChatSideResult } from "./chat/side-result.ts";
 import {
   loadToolsEffective as loadToolsEffectiveInternal,
@@ -289,6 +290,9 @@ export class OpenClawApp extends LitElement {
   @state() chatSessionPickerLoading = false;
   @state() chatSessionPickerError: string | null = null;
   @state() chatSessionPickerResult: SessionsListResult | null = null;
+  @state() chatSessionPickerEditingKey: string | null = null;
+  @state() chatSessionPickerEditingValue = "";
+  @state() chatSessionPickerSavingKey: string | null = null;
   private sessionSwitchNoticeSeq = 0;
   private sessionSwitchNoticeTimer: number | null = null;
   private sessionSwitchFlashTimer: number | null = null;
@@ -729,8 +733,7 @@ export class OpenClawApp extends LitElement {
     }
     if (this.chatSessionPickerOpen) {
       e.preventDefault();
-      this.chatSessionPickerOpen = false;
-      this.chatSessionPickerSurface = null;
+      closeChatSessionPicker(this);
       return;
     }
     const openComposerDetails = this.querySelectorAll<HTMLDetailsElement>(
@@ -778,8 +781,7 @@ export class OpenClawApp extends LitElement {
         (node) => path.includes(node),
       );
       if (!insidePicker) {
-        this.chatSessionPickerOpen = false;
-        this.chatSessionPickerSurface = null;
+        closeChatSessionPicker(this);
       }
     }
     if (!this.chatMobileControlsOpen) {
@@ -939,6 +941,9 @@ export class OpenClawApp extends LitElement {
   }
 
   setTab(next: Tab) {
+    if (next !== "chat") {
+      forceCloseChatSessionPicker(this);
+    }
     setTabInternal(this as unknown as Parameters<typeof setTabInternal>[0], next);
     if (next !== "chat") {
       this.setChatMobileControlsOpen(false);
@@ -959,8 +964,7 @@ export class OpenClawApp extends LitElement {
     const focusTarget = options?.restoreFocus ? this.chatMobileControlsTrigger : null;
     this.chatMobileControlsOpen = false;
     if (this.chatSessionPickerSurface === "mobile") {
-      this.chatSessionPickerOpen = false;
-      this.chatSessionPickerSurface = null;
+      forceCloseChatSessionPicker(this);
     }
     this.chatMobileControlsTrigger = null;
     if (!(focusTarget instanceof HTMLElement) || !focusTarget.isConnected) {
