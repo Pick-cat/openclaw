@@ -364,17 +364,23 @@ async function saveChatSessionPickerRename(
     });
     resetChatSessionPickerRenameState(state);
     void refreshSessionOptions(state).catch((err) => {
-      state.chatSessionPickerError = `Session renamed, but refresh failed: ${String(err)}`;
+      state.chatSessionPickerError = t("chat.selectors.renameRefreshFailed", {
+        error: String(err),
+      });
       requestHostUpdate(state);
     });
     void refreshChatSessionPickerAfterRename(state).catch((err) => {
-      state.chatSessionPickerError = `Session renamed, but picker refresh failed: ${String(err)}`;
+      state.chatSessionPickerError = t("chat.selectors.renamePickerRefreshFailed", {
+        error: String(err),
+      });
       requestHostUpdate(state);
     });
   } catch (err) {
     patchChatSessionLabel(state, row.key, previousLabel);
     state.chatSessionPickerSavingKey = null;
-    state.chatSessionPickerError = `Failed to rename session: ${String(err)}`;
+    state.chatSessionPickerError = t("chat.selectors.renameFailed", {
+      error: String(err),
+    });
   } finally {
     requestHostUpdate(state);
   }

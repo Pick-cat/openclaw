@@ -1,5 +1,8 @@
 {
   "fallbackKeys": [
+    "chat.selectors.renameFailed",
+    "chat.selectors.renamePickerRefreshFailed",
+    "chat.selectors.renameRefreshFailed",
     "skillWorkshop.header.useCurrentChat",
     "skillWorkshop.header.useCurrentChatAria",
     "skillWorkshop.header.useCurrentChatTooltip",
@@ -32,12 +35,12 @@
     "workboard.unknownStatus",
     "workboard.viewDetails"
   ],
-  "generatedAt": "2026-06-03T22:35:02.432Z",
+  "generatedAt": "2026-06-04T06:20:08.163Z",
   "locale": "fr",
   "model": "claude-opus-4-8",
   "provider": "anthropic",
-  "sourceHash": "045696b27bf36b4d0ef74cfd8ec76124de70c9bcef7ca7cb378a0d07f1bdfa61",
-  "totalKeys": 1333,
+  "sourceHash": "eca24e774d64a13ed2309954fdc039bf0e706b14a2bdb8537d2e85007ce3fe53",
+  "totalKeys": 1336,
   "translatedKeys": 1302,
   "workflow": 1
 }
