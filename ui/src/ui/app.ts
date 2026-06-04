@@ -72,7 +72,6 @@ import {
   type CompactionStatus,
   type FallbackStatus,
 } from "./app-tool-stream.ts";
-import type { AppViewState } from "./app-view-state.ts";
 import { normalizeAssistantIdentity } from "./assistant-identity.ts";
 import { restoreChatComposerState } from "./chat/composer-persistence.ts";
 import { exportChatMarkdown } from "./chat/export.ts";
@@ -290,6 +289,9 @@ export class OpenClawApp extends LitElement {
   @state() chatSessionPickerLoading = false;
   @state() chatSessionPickerError: string | null = null;
   @state() chatSessionPickerResult: SessionsListResult | null = null;
+  @state() threadsLoading = false;
+  @state() threadsResult: SessionsListResult | null = null;
+  @state() threadsError: string | null = null;
   @state() chatSessionPickerEditingKey: string | null = null;
   @state() chatSessionPickerEditingValue = "";
   @state() chatSessionPickerSavingKey: string | null = null;
@@ -733,7 +735,7 @@ export class OpenClawApp extends LitElement {
     }
     if (this.chatSessionPickerOpen) {
       e.preventDefault();
-      closeChatSessionPicker(this);
+      closeChatSessionPicker(this as unknown as Parameters<typeof closeChatSessionPicker>[0]);
       return;
     }
     const openComposerDetails = this.querySelectorAll<HTMLDetailsElement>(
@@ -781,7 +783,7 @@ export class OpenClawApp extends LitElement {
         (node) => path.includes(node),
       );
       if (!insidePicker) {
-        closeChatSessionPicker(this);
+        closeChatSessionPicker(this as unknown as Parameters<typeof closeChatSessionPicker>[0]);
       }
     }
     if (!this.chatMobileControlsOpen) {
@@ -805,7 +807,9 @@ export class OpenClawApp extends LitElement {
     this.onSlashAction = async (action: string) => {
       switch (action) {
         case "new-session":
-          await createChatSessionInternal(this as unknown as AppViewState);
+          await createChatSessionInternal(
+            this as unknown as Parameters<typeof createChatSessionInternal>[0],
+          );
           break;
         case "export":
           exportChatMarkdown(this.chatMessages, this.assistantName);
@@ -942,7 +946,9 @@ export class OpenClawApp extends LitElement {
 
   setTab(next: Tab) {
     if (next !== "chat") {
-      forceCloseChatSessionPicker(this);
+      forceCloseChatSessionPicker(
+        this as unknown as Parameters<typeof forceCloseChatSessionPicker>[0],
+      );
     }
     setTabInternal(this as unknown as Parameters<typeof setTabInternal>[0], next);
     if (next !== "chat") {
@@ -964,7 +970,9 @@ export class OpenClawApp extends LitElement {
     const focusTarget = options?.restoreFocus ? this.chatMobileControlsTrigger : null;
     this.chatMobileControlsOpen = false;
     if (this.chatSessionPickerSurface === "mobile") {
-      forceCloseChatSessionPicker(this);
+      forceCloseChatSessionPicker(
+        this as unknown as Parameters<typeof forceCloseChatSessionPicker>[0],
+      );
     }
     this.chatMobileControlsTrigger = null;
     if (!(focusTarget instanceof HTMLElement) || !focusTarget.isConnected) {
@@ -1030,7 +1038,7 @@ export class OpenClawApp extends LitElement {
         kind: "success",
         text: `Imported ${customTheme.label}.`,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.customThemeImportMessage = {
         kind: "error",
         text: error instanceof Error ? error.message : "Failed to import tweakcn theme.",
@@ -1257,7 +1265,7 @@ export class OpenClawApp extends LitElement {
     this.realtimeTalkSession = session;
     try {
       await session.start();
-    } catch (error) {
+    } catch (error: unknown) {
       session.stop();
       if (this.realtimeTalkSession === session) {
         this.realtimeTalkSession = null;
@@ -1340,7 +1348,7 @@ export class OpenClawApp extends LitElement {
         decision,
       });
       dismissExecApprovalPrompt(this, active.id);
-    } catch (err) {
+    } catch (err: unknown) {
       if (isStaleApprovalResolutionError(err)) {
         dismissExecApprovalPrompt(this, active.id);
         await refreshPendingApprovalQueue(this);
@@ -1453,7 +1461,7 @@ export class OpenClawApp extends LitElement {
         };
       }
       this.sidebarError = null;
-    } catch (err) {
+    } catch (err: unknown) {
       if (this.sidebarContent !== content) {
         return;
       }
@@ -1549,7 +1557,7 @@ export class OpenClawApp extends LitElement {
       await subscribeToWebPush(this.client);
       this.webPushSubscribed = true;
       this.webPushPermission = Notification.permission;
-    } catch (err) {
+    } catch (err: unknown) {
       this.lastError = String(err);
     } finally {
       this.webPushLoading = false;
@@ -1569,7 +1577,7 @@ export class OpenClawApp extends LitElement {
       const { unsubscribeFromWebPush } = await import("./push-subscription.ts");
       await unsubscribeFromWebPush(this.client);
       this.webPushSubscribed = false;
-    } catch (err) {
+    } catch (err: unknown) {
       this.lastError = String(err);
     } finally {
       this.webPushLoading = false;
@@ -1583,13 +1591,13 @@ export class OpenClawApp extends LitElement {
     try {
       const { sendTestWebPush } = await import("./push-subscription.ts");
       await sendTestWebPush(this.client);
-    } catch (err) {
+    } catch (err: unknown) {
       this.lastError = String(err);
     }
   }
 
   override render() {
-    return renderApp(this as unknown as AppViewState);
+    return renderApp(this as unknown as Parameters<typeof renderApp>[0]);
   }
 }
 

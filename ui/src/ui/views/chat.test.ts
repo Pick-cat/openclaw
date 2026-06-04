@@ -2900,7 +2900,7 @@ describe("chat session controls", () => {
     const { state } = createChatHeaderState();
     state.sessionKey = "agent:main:main";
     state.settings.sessionKey = state.sessionKey;
-    let resolvePatch: (() => void) | null = null;
+    let resolvePatch: () => void = () => {};
     const patchPromise = new Promise<void>((resolve) => {
       resolvePatch = resolve;
     });
@@ -2948,7 +2948,7 @@ describe("chat session controls", () => {
 
     expect(state.chatSessionPickerOpen).toBe(true);
 
-    resolvePatch?.();
+    resolvePatch();
     await vi.waitFor(() => expect(state.chatSessionPickerSavingKey).toBeNull());
   });
 
