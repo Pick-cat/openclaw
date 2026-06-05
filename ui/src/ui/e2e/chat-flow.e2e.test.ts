@@ -752,6 +752,72 @@ describeControlUiE2e("Control UI mocked Gateway E2E", () => {
     }
   });
 
+  it("renames a chat session through the picker and keeps the refreshed label visible", async () => {
+    const context = await browser.newContext({
+      locale: "en-US",
+      serviceWorkers: "block",
+      viewport: { height: 900, width: 1280 },
+    });
+    const page = await context.newPage();
+    const renamedSessions = {
+      ...chatSessionListResponse(),
+      sessions: [
+        {
+          key: "agent:main:session-a",
+          kind: "direct",
+          label: "Session A",
+          updatedAt: 2,
+        },
+        {
+          key: "agent:main:session-b",
+          kind: "direct",
+          label: "Ops notes",
+          updatedAt: 1,
+        },
+      ],
+    };
+    const gateway = await installMockGateway(page, {
+      deferredMethods: ["sessions.list"],
+      sessionKey: "agent:main:session-a",
+    });
+
+    try {
+      await page.goto(`${server.baseUrl}chat`);
+      await page.getByRole("button", { name: "Chat session" }).click();
+      await gateway.waitForRequest("sessions.list");
+      await gateway.resolveDeferred("sessions.list", chatSessionListResponse());
+      await page.locator('[data-chat-session-rename-edit="agent:main:session-b"]').click();
+
+      const input = page.locator('[data-chat-session-rename-input="agent:main:session-b"]');
+      await input.fill("Ops notes");
+      await gateway.deferNext("sessions.list");
+      await gateway.deferNext("sessions.list");
+      await page.locator('[data-chat-session-rename-save="agent:main:session-b"]').click();
+
+      const patchRequest = await gateway.waitForRequest("sessions.patch");
+      expect(requireRecord(patchRequest.params)).toMatchObject({
+        key: "agent:main:session-b",
+        label: "Ops notes",
+      });
+      await waitForRequests(gateway, "sessions.list", 3);
+      await gateway.resolveDeferred("sessions.list", renamedSessions);
+      await gateway.resolveDeferred("sessions.list", renamedSessions);
+      await page.locator(".chat-session-picker__option-label", { hasText: "Ops notes" }).waitFor({
+        timeout: 10_000,
+      });
+      const listRequests = await waitForRequests(gateway, "sessions.list", 2);
+      expect(listRequests.map((request) => requireRecord(request.params))).toContainEqual(
+        expect.objectContaining({
+          includeGlobal: true,
+          includeUnknown: true,
+          limit: 50,
+        }),
+      );
+    } finally {
+      await context.close();
+    }
+  });
+
   it("shows a pending send while a model override save is still pending", async () => {
     const context = await browser.newContext({
       locale: "en-US",

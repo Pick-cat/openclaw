@@ -363,13 +363,13 @@ async function saveChatSessionPickerRename(
       label: nextLabel,
     });
     resetChatSessionPickerRenameState(state);
-    void refreshSessionOptions(state).catch((err) => {
+    void refreshSessionOptions(state).catch((err: unknown) => {
       state.chatSessionPickerError = t("chat.selectors.renameRefreshFailed", {
         error: String(err),
       });
       requestHostUpdate(state);
     });
-    void refreshChatSessionPickerAfterRename(state).catch((err) => {
+    void refreshChatSessionPickerAfterRename(state).catch((err: unknown) => {
       state.chatSessionPickerError = t("chat.selectors.renamePickerRefreshFailed", {
         error: String(err),
       });
