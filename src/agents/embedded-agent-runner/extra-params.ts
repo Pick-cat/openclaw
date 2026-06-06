@@ -923,9 +923,14 @@ function isDeepSeekV4OpenAICompatibleModel(model: Parameters<StreamFn>[0]): bool
   const normalizedModelId = normalizeDeepSeekV4CandidateId(model.id);
   return (
     model.api === "openai-completions" &&
-    model.provider !== "microsoft-foundry" &&
+    !isMicrosoftFoundryProvider(model.provider) &&
     (normalizedModelId === "deepseek-v4-flash" || normalizedModelId === "deepseek-v4-pro")
   );
+}
+
+function isMicrosoftFoundryProvider(provider?: string): boolean {
+  if (!provider) return false;
+  return provider === "microsoft-foundry" || provider.startsWith("microsoft-foundry-");
 }
 
 const MIMO_REASONING_OPENAI_COMPATIBLE_MODEL_IDS = new Set([
