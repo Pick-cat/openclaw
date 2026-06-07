@@ -1861,6 +1861,143 @@ describe("memory-core dreaming phases", () => {
     expect(newOccurrences).toBe(1);
   });
 
+  it("excludes archive (.deleted/.reset) transcripts from session corpus collection", async () => {
+    const workspaceDir = await createDreamingWorkspace();
+    vi.stubEnv("OPENCLAW_TEST_FAST", "1");
+    vi.stubEnv("OPENCLAW_STATE_DIR", path.join(workspaceDir, ".state"));
+    const sessionsDir = resolveSessionTranscriptsDirForAgent("main");
+    await fs.mkdir(sessionsDir, { recursive: true });
+
+    // Primary transcript with real user content
+    await fs.writeFile(
+      path.join(sessionsDir, "dreaming-main.jsonl"),
+      [
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "user",
+            timestamp: "2026-04-16T18:01:00.000Z",
+            content: [{ type: "text", text: "Document the memory-core plugin setup." }],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            timestamp: "2026-04-16T18:02:00.000Z",
+            content: [{ type: "text", text: "I documented the memory-core plugin setup." }],
+          },
+        }),
+      ].join("\n") + "\n",
+      "utf-8",
+    );
+
+    // Deleted archive — should be excluded from corpus
+    await fs.writeFile(
+      path.join(sessionsDir, "dreaming-main.jsonl.deleted.2026-04-15T18-00-00.000Z"),
+      [
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "user",
+            timestamp: "2026-04-15T18:01:00.000Z",
+            content: [{ type: "text", text: "Archive message that must not appear." }],
+          },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            timestamp: "2026-04-15T18:02:00.000Z",
+            content: [{ type: "text", text: "I replied to the archived session." }],
+          },
+        }),
+      ].join("\n") + "\n",
+      "utf-8",
+    );
+
+    // Reset archive — should also be excluded
+    await fs.writeFile(
+      path.join(sessionsDir, "dreaming-main.jsonl.reset.2026-04-14T18-00-00.000Z"),
+      [
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "user",
+            timestamp: "2026-04-14T18:01:00.000Z",
+            content: [{ type: "text", text: "Reset-archive content that must be excluded." }],
+          },
+        }),
+      ].join("\n") + "\n",
+      "utf-8",
+    );
+
+    const now = new Date("2026-04-16T19:00:00.000Z");
+    await fs.utimes(path.join(sessionsDir, "dreaming-main.jsonl"), now, now);
+    await fs.utimes(
+      path.join(sessionsDir, "dreaming-main.jsonl.deleted.2026-04-15T18-00-00.000Z"),
+      now,
+      now,
+    );
+    await fs.utimes(
+      path.join(sessionsDir, "dreaming-main.jsonl.reset.2026-04-14T18-00-00.000Z"),
+      now,
+      now,
+    );
+
+    const { beforeAgentReply } = createHarness(
+      {
+        agents: {
+          defaults: { workspace: workspaceDir },
+          list: [{ id: "main", workspace: workspaceDir }],
+        },
+        plugins: {
+          entries: {
+            "memory-core": {
+              config: {
+                dreaming: {
+                  enabled: true,
+                  phases: {
+                    light: {
+                      enabled: true,
+                      limit: 20,
+                      lookbackDays: 7,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      workspaceDir,
+    );
+
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      await beforeAgentReply(
+        { cleanedBody: "__openclaw_memory_core_light_sleep__" },
+        { trigger: "heartbeat", workspaceDir },
+      );
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
+
+    const corpus = await fs.readFile(
+      path.join(workspaceDir, "memory", ".dreams", "session-corpus", "2026-04-16.txt"),
+      "utf-8",
+    );
+    // Primary transcript content should be present
+    expect(corpus).toContain("User: Document the memory-core plugin setup.");
+    expect(corpus).toContain("Assistant: I documented the memory-core plugin setup.");
+    // Archive content must not appear
+    expect(corpus).not.toContain("Archive message that must not appear.");
+    expect(corpus).not.toContain("I replied to the archived session.");
+    expect(corpus).not.toContain("Reset-archive content that must be excluded.");
+  });
+
   it("buckets session snippets by per-message day rather than file mtime", async () => {
     const workspaceDir = await createDreamingWorkspace();
     vi.stubEnv("OPENCLAW_TEST_FAST", "1");

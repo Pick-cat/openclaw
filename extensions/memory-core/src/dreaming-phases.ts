@@ -5,6 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
   buildSessionEntry,
+  isSessionArchiveArtifactName,
   listSessionFilesForAgent,
   loadSessionTranscriptClassificationForAgent,
   normalizeSessionTranscriptPathForComparison,
@@ -857,6 +858,9 @@ async function collectSessionIngestionBatches(params: {
           };
     for (const absolutePath of files) {
       if (isCheckpointSessionTranscriptPath(absolutePath)) {
+        continue;
+      }
+      if (isSessionArchiveArtifactName(path.basename(absolutePath))) {
         continue;
       }
       const normalizedPath = normalizeSessionTranscriptPathForComparison(absolutePath);
