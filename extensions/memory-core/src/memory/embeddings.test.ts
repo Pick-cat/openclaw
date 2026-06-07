@@ -261,5 +261,38 @@ describe("createEmbeddingProvider", () => {
 
     expect(model).toBe("generic-default");
     expect(mockEmbeddingRegistry.genericLookupConfigs).toEqual([options.config]);
+
+  describe("resolveConfiguredLocalModel", () => {
+    it("returns modelPath when provider is local", () => {
+      const r = resolveConfiguredLocalModel({
+        provider: "local",
+        local: { modelPath: "/path/to/model.gguf" },
+      });
+      expect(r).toBe("/path/to/model.gguf");
+    });
+
+    it("returns undefined when provider is local but no modelPath", () => {
+      const r = resolveConfiguredLocalModel({
+        provider: "local",
+        local: {},
+      });
+      expect(r).toBeUndefined();
+    });
+
+    it("returns undefined for non-local providers", () => {
+      const r = resolveConfiguredLocalModel({
+        provider: "google",
+        local: { modelPath: "/x" },
+      });
+      expect(r).toBeUndefined();
+    });
+
+    it("returns undefined when local config is absent", () => {
+      const r = resolveConfiguredLocalModel({
+        provider: "local",
+      });
+      expect(r).toBeUndefined();
+    });
+  });
   });
 });

@@ -41,6 +41,7 @@ import {
   createEmbeddingProvider,
   resolveEmbeddingProviderAdapterId,
   resolveEmbeddingProviderFallbackModel,
+  resolveConfiguredLocalModel,
   type EmbeddingProvider,
   type EmbeddingProviderId,
   type EmbeddingProviderRuntime,
@@ -311,7 +312,7 @@ export abstract class MemoryManagerSyncOps {
               resolveEmbeddingProviderAdapterId(this.settings.provider, this.cfg) ??
               this.settings.provider,
             model:
-              this.settings.model.trim() ||
+              resolveConfiguredLocalModel(this.settings) || this.settings.model.trim() ||
               resolveEmbeddingProviderFallbackModel(this.settings.provider, "", this.cfg),
           };
     const provider = hasProviderOverride

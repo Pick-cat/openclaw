@@ -168,6 +168,19 @@ export function resolveEmbeddingProviderAdapterTransport(
     return undefined;
   }
 }
+/** Returns the local modelPath when provider is local, or undefined otherwise.
+ *  Status identity uses this so it agrees with the model value that indexing
+ *  writes (the local worker returns modelPath as provider.model). */
+export function resolveConfiguredLocalModel(settings: {
+  provider: string;
+  local?: { modelPath?: string };
+}): string | undefined {
+  if (settings.provider === "local" && settings.local?.modelPath?.trim()) {
+    return settings.local.modelPath.trim();
+  }
+  return undefined;
+}
+
 
 async function createWithAdapter(
   adapter: MemoryEmbeddingProviderAdapter,
