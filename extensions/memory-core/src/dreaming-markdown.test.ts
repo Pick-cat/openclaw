@@ -253,4 +253,45 @@ describe("dreaming markdown storage", () => {
     expect(content).toContain("I walked through a forest of data structures...");
     expect(content).toContain("<!-- openclaw:dreaming:diary:end -->");
   });
+
+  it("writes deep sleep inline into existing lowercase dreams.md when it exists", async () => {
+    const workspaceDir = await createTempWorkspace("openclaw-dreaming-markdown-");
+    const lowercasePath = path.join(workspaceDir, "dreams.md");
+
+    await fs.writeFile(lowercasePath, "", "utf-8");
+
+    const result = await writeDeepDreamingReport({
+      workspaceDir,
+      bodyLines: ["- Deep summary via lowercase."],
+      storage: { mode: "inline", separateReports: false },
+      nowMs: Date.parse("2026-04-08T10:00:00Z"),
+      timezone: "UTC",
+    });
+
+    expect(result?.inlinePath).toBe(lowercasePath);
+    const content = await fs.readFile(lowercasePath, "utf-8");
+    expect(content).toContain("## Deep Sleep");
+    expect(content).toContain("- Deep summary via lowercase.");
+    expect(content).toContain("<!-- openclaw:dreaming:deep:start -->");
+    expect(content).toContain("<!-- openclaw:dreaming:deep:end -->");
+
+    // No uppercase DREAMS.md created
+    await expectPathMissing(path.join(workspaceDir, "DREAMS.md"));
+  });
+
+  it("refuses to write deep sleep into symlinked DREAMS.md", async () => {
+    const workspaceDir = await createTempWorkspace("openclaw-dreaming-markdown-");
+    const dreamsPath = path.join(workspaceDir, "DREAMS.md");
+    const targetPath = path.join(workspaceDir, "not-dreams-target.md");
+    await fs.writeFile(targetPath, "", "utf-8");
+    await fs.symlink(targetPath, dreamsPath);
+
+    await expect(
+      writeDeepDreamingReport({
+        workspaceDir,
+        bodyLines: ["- Should not write."],
+        storage: { mode: "inline", separateReports: false },
+      }),
+    ).rejects.toThrow("Refusing to write symlinked DREAMS.md");
+  });
 });

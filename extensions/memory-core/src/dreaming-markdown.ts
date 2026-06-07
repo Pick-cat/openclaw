@@ -11,6 +11,7 @@ import {
   replaceManagedMarkdownBlock,
   withTrailingNewline,
 } from "openclaw/plugin-sdk/memory-host-markdown";
+import { updateDeepDreamsFile } from "./dreaming-narrative.js";
 import { resolveMemoryCoreNowMs, resolveMemoryCoreTimestamp } from "./time.js";
 
 const DAILY_PHASE_HEADINGS: Record<Exclude<MemoryDreamingPhaseName, "deep">, string> = {
@@ -123,14 +124,6 @@ export async function writeDailyDreamingPhaseBlock(params: {
   };
 }
 
-const DEEP_SLEEP_MARKERS = {
-  start: "<!-- openclaw:dreaming:deep:start -->",
-  end: "<!-- openclaw:dreaming:deep:end -->",
-} as const;
-
-function resolveDreamsPath(workspaceDir: string): string {
-  return path.join(workspaceDir, "DREAMS.md");
-}
 
 export async function writeDeepDreamingReport(params: {
   workspaceDir: string;
@@ -145,22 +138,14 @@ export async function writeDeepDreamingReport(params: {
   let reportPath: string | undefined;
 
   if (shouldWriteInline(params.storage)) {
-    inlinePath = resolveDreamsPath(params.workspaceDir);
-    await fs.mkdir(path.dirname(inlinePath), { recursive: true });
-    const original = await fs.readFile(inlinePath, "utf-8").catch((err: unknown) => {
-      if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
-        return "";
-      }
-      throw err;
-    });
-    const updated = replaceManagedMarkdownBlock({
-      original,
-      heading: "## Deep Sleep",
-      startMarker: DEEP_SLEEP_MARKERS.start,
-      endMarker: DEEP_SLEEP_MARKERS.end,
+    const result = await updateDeepDreamsFile({
+      workspaceDir: params.workspaceDir,
       body,
+      heading: "## Deep Sleep",
+      startMarker: "<!-- openclaw:dreaming:deep:start -->",
+      endMarker: "<!-- openclaw:dreaming:deep:end -->",
     });
-    await fs.writeFile(inlinePath, withTrailingNewline(updated), "utf-8");
+    inlinePath = result.dreamsPath;
   }
 
   if (shouldWriteSeparate(params.storage)) {

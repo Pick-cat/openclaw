@@ -15,6 +15,7 @@ import { resolveGlobalMap } from "openclaw/plugin-sdk/global-singleton";
 import { resolveStateDir } from "openclaw/plugin-sdk/memory-core-host-runtime-core";
 import { getRuntimeConfig } from "openclaw/plugin-sdk/runtime-config-snapshot";
 import { pathExists, replaceFileAtomic } from "openclaw/plugin-sdk/security-runtime";
+import { replaceManagedMarkdownBlock } from "openclaw/plugin-sdk/memory-host-markdown";
 import {
   loadSessionStore,
   resolveStorePath,
@@ -566,6 +567,28 @@ async function updateDreamsFile<T>(params: {
       dreamsFileLocks.delete(dreamsPath);
     }
   }
+}
+
+export async function updateDeepDreamsFile(params: {
+  workspaceDir: string;
+  body: string;
+  startMarker: string;
+  endMarker: string;
+  heading: string;
+}): Promise<{ dreamsPath: string; updated: string }> {
+  return updateDreamsFile({
+    workspaceDir: params.workspaceDir,
+    updater: (existing, dreamsPath) => {
+      const updated = replaceManagedMarkdownBlock({
+        original: existing,
+        heading: params.heading,
+        startMarker: params.startMarker,
+        endMarker: params.endMarker,
+        body: params.body,
+      });
+      return { content: updated, result: { dreamsPath, updated } };
+    },
+  });
 }
 
 async function withNarrativeSessionLock<T>(sessionKey: string, fn: () => Promise<T>): Promise<T> {
