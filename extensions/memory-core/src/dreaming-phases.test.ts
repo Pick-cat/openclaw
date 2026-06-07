@@ -1900,7 +1900,7 @@ describe("memory-core dreaming phases", () => {
           type: "message",
           message: {
             role: "user",
-            timestamp: "2026-04-15T18:01:00.000Z",
+            timestamp: "2026-04-16T18:03:00.000Z",
             content: [{ type: "text", text: "Archive message that must not appear." }],
           },
         }),
@@ -1908,7 +1908,7 @@ describe("memory-core dreaming phases", () => {
           type: "message",
           message: {
             role: "assistant",
-            timestamp: "2026-04-15T18:02:00.000Z",
+            timestamp: "2026-04-16T18:04:00.000Z",
             content: [{ type: "text", text: "I replied to the archived session." }],
           },
         }),
@@ -1924,7 +1924,7 @@ describe("memory-core dreaming phases", () => {
           type: "message",
           message: {
             role: "user",
-            timestamp: "2026-04-14T18:01:00.000Z",
+            timestamp: "2026-04-16T18:05:00.000Z",
             content: [{ type: "text", text: "Reset-archive content that must be excluded." }],
           },
         }),
