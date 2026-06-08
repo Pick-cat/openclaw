@@ -656,6 +656,7 @@ async function prepareCronRunContext(params: {
   const modelPreflightRuntime = await loadCronModelPreflightRuntime();
   const preflightCandidates = resolveCronPreflightCandidates({
     cfg: cfgWithAgentDefaults,
+    fallbackPolicyCfg: input.cfg,
     job: input.job,
     agentId,
     provider,

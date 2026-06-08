@@ -263,6 +263,138 @@ describe("resolveCronFallbacksOverride", () => {
     ).toBeUndefined();
   });
 
+  it("lets cron string agent models inherit default model fallbacks", () => {
+    const cfg: OpenClawConfig = {
+      agents: {
+        defaults: {
+          model: {
+            primary: "deepseek/deepseek-v4-pro",
+            fallbacks: ["deepseek/deepseek-v4-flash", "moonshot/kimi-k2.6"],
+          },
+        },
+        list: [
+          {
+            id: "main",
+            model: "deepseek/deepseek-v4-pro",
+          },
+        ],
+      },
+    };
+
+    expect(
+      resolveCronFallbacksOverride({
+        cfg,
+        agentId: "main",
+        job: makeJob({
+          kind: "agentTurn",
+          message: "summarize",
+        }),
+      }),
+    ).toBeUndefined();
+    expect(
+      resolveCronPreflightCandidates({
+        cfg,
+        agentId: "main",
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        job: makeJob({
+          kind: "agentTurn",
+          message: "summarize",
+        }),
+      }),
+    ).toEqual([
+      { provider: "deepseek", model: "deepseek-v4-pro" },
+      { provider: "deepseek", model: "deepseek-v4-flash" },
+      { provider: "moonshot", model: "kimi-k2.6" },
+    ]);
+  });
+
+  it("keeps explicit empty agent fallbacks strict for cron runs", () => {
+    expect(
+      resolveCronFallbacksOverride({
+        cfg: {
+          agents: {
+            defaults: {
+              model: {
+                primary: "deepseek/deepseek-v4-pro",
+                fallbacks: ["deepseek/deepseek-v4-flash"],
+              },
+            },
+            list: [
+              {
+                id: "strict",
+                model: {
+                  primary: "deepseek/deepseek-v4-pro",
+                  fallbacks: [],
+                },
+              },
+            ],
+          },
+        },
+        agentId: "strict",
+        job: makeJob({
+          kind: "agentTurn",
+          message: "summarize",
+        }),
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("keeps string agent model overrides strict when they differ from the default primary", () => {
+    const rawCfg: OpenClawConfig = {
+      agents: {
+        defaults: {
+          model: {
+            primary: "deepseek/deepseek-v4-pro",
+            fallbacks: ["deepseek/deepseek-v4-flash"],
+          },
+        },
+        list: [
+          {
+            id: "research",
+            model: "openai/gpt-5.5",
+          },
+        ],
+      },
+    };
+
+    expect(
+      resolveCronFallbacksOverride({
+        cfg: rawCfg,
+        agentId: "research",
+        job: makeJob({
+          kind: "agentTurn",
+          message: "summarize",
+        }),
+      }),
+    ).toStrictEqual([]);
+    expect(
+      resolveCronPreflightCandidates({
+        cfg: {
+          ...rawCfg,
+          agents: {
+            ...rawCfg.agents,
+            defaults: {
+              ...rawCfg.agents?.defaults,
+              model: {
+                primary: "openai/gpt-5.5",
+                fallbacks: ["deepseek/deepseek-v4-flash"],
+              },
+            },
+          },
+        },
+        fallbackPolicyCfg: rawCfg,
+        agentId: "research",
+        provider: "openai",
+        model: "gpt-5.5",
+        job: makeJob({
+          kind: "agentTurn",
+          message: "summarize",
+        }),
+      }),
+    ).toStrictEqual([{ provider: "openai", model: "gpt-5.5" }]);
+  });
+
   it("plans the full configured candidate chain for cron preflight", () => {
     expect(
       resolveCronPreflightCandidates({

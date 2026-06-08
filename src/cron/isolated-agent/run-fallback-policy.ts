@@ -1,6 +1,11 @@
 /** Resolves model fallback chains for isolated cron runs and preflight. */
+import { resolveAgentConfig } from "../../agents/agent-scope-config.js";
 import { resolveModelCandidateChain } from "../../agents/model-fallback.js";
 import type { ModelCandidate } from "../../agents/model-fallback.types.js";
+import {
+  resolveAgentModelFallbackValues,
+  resolveAgentModelPrimaryValue,
+} from "../../config/model-input.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import type { CronJob } from "../types.js";
 import {
@@ -33,17 +38,30 @@ export function resolveCronFallbacksOverride(params: {
       return subagentFallbacksOverride;
     }
   }
-  return resolveEffectiveModelFallbacks({
+  const effectiveFallbacks = resolveEffectiveModelFallbacks({
     cfg: params.cfg,
     agentId: params.agentId,
     hasSessionModelOverride: hasCronPayloadModelOverride,
     modelOverrideSource: hasCronPayloadModelOverride ? "auto" : undefined,
   });
+  if (!hasCronPayloadModelOverride && effectiveFallbacks?.length === 0) {
+    const agentModel = resolveAgentConfig(params.cfg, params.agentId)?.model;
+    const agentPrimary =
+      typeof agentModel === "string" && agentModel.trim().length > 0 ? agentModel.trim() : null;
+    const defaultPrimary = resolveAgentModelPrimaryValue(params.cfg.agents?.defaults?.model);
+    const hasDefaultFallbacks =
+      resolveAgentModelFallbackValues(params.cfg.agents?.defaults?.model).length > 0;
+    if (agentPrimary && agentPrimary === defaultPrimary?.trim() && hasDefaultFallbacks) {
+      return undefined;
+    }
+  }
+  return effectiveFallbacks;
 }
 
 /** Builds the ordered model candidates used by cron preflight checks. */
 export function resolveCronPreflightCandidates(params: {
   cfg: OpenClawConfig;
+  fallbackPolicyCfg?: OpenClawConfig;
   job: CronJob;
   agentId: string;
   provider: string;
@@ -51,7 +69,7 @@ export function resolveCronPreflightCandidates(params: {
   useSubagentFallbacks?: boolean;
 }): ModelCandidate[] {
   const fallbacksOverride = resolveCronFallbacksOverride({
-    cfg: params.cfg,
+    cfg: params.fallbackPolicyCfg ?? params.cfg,
     job: params.job,
     agentId: params.agentId,
     useSubagentFallbacks: params.useSubagentFallbacks,
