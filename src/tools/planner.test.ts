@@ -123,9 +123,9 @@ describe("buildToolPlan", () => {
           availability: { kind: "unknown-kind" } as unknown as ToolDescriptor["availability"],
         }),
       ],
-      onHiddenDiagnostic: ({ descriptor, diagnostic }) => {
+      onHiddenDiagnostic: ({ descriptor: hiddenDescriptor, diagnostic }) => {
         captured.push({
-          toolName: descriptor.name,
+          toolName: hiddenDescriptor.name,
           reason: diagnostic.reason,
           message: diagnostic.message,
         });
