@@ -194,4 +194,24 @@ describe("capturePluginToolDescriptor", () => {
 
     expect(captured.descriptor.availability).toEqual({ anyOf: [] });
   });
+
+  it("ignores availability metadata that is not a planner expression shape", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { privateMetadata: true, version: 2 },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
 });

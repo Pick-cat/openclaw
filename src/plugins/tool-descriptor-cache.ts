@@ -2,7 +2,8 @@
 import fs from "node:fs";
 import type { AnyAgentTool } from "../agents/tools/common.js";
 import { resolveRuntimeConfigCacheKey } from "../config/runtime-snapshot.js";
-import type { JsonObject, ToolAvailabilityExpression, ToolDescriptor } from "../tools/types.js";
+import { isToolAvailabilityExpression } from "../tools/availability.js";
+import type { JsonObject, ToolDescriptor } from "../tools/types.js";
 import type { PluginLoadOptions } from "./loader.js";
 import type { OpenClawPluginToolContext } from "./types.js";
 
@@ -144,12 +145,9 @@ function asJsonObject(value: unknown): JsonObject {
   return value as JsonObject;
 }
 
-function readAgentToolAvailability(tool: AnyAgentTool): ToolAvailabilityExpression | undefined {
-  const availability = (tool as { availability?: unknown }).availability;
-  if (!availability || typeof availability !== "object" || Array.isArray(availability)) {
-    return undefined;
-  }
-  return availability as ToolAvailabilityExpression;
+function readAgentToolAvailability(tool: AnyAgentTool) {
+  const availability = tool.availability;
+  return isToolAvailabilityExpression(availability) ? availability : undefined;
 }
 
 export function capturePluginToolDescriptor(params: {
