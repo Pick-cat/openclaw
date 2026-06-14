@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import type { AnyAgentTool } from "../agents/tools/common.js";
 import { resolveRuntimeConfigCacheKey } from "../config/runtime-snapshot.js";
-import type { JsonObject, ToolDescriptor } from "../tools/types.js";
+import type { JsonObject, ToolAvailabilityExpression, ToolDescriptor } from "../tools/types.js";
 import type { PluginLoadOptions } from "./loader.js";
 import type { OpenClawPluginToolContext } from "./types.js";
 
@@ -144,6 +144,14 @@ function asJsonObject(value: unknown): JsonObject {
   return value as JsonObject;
 }
 
+function readAgentToolAvailability(tool: AnyAgentTool): ToolAvailabilityExpression | undefined {
+  const availability = (tool as { availability?: unknown }).availability;
+  if (!availability || typeof availability !== "object" || Array.isArray(availability)) {
+    return undefined;
+  }
+  return availability as ToolAvailabilityExpression;
+}
+
 export function capturePluginToolDescriptor(params: {
   pluginId: string;
   tool: AnyAgentTool;
@@ -151,6 +159,7 @@ export function capturePluginToolDescriptor(params: {
 }): CachedPluginToolDescriptor {
   const label = (params.tool as { label?: unknown }).label;
   const title = typeof label === "string" && label.trim() ? label.trim() : undefined;
+  const availability = readAgentToolAvailability(params.tool);
   return {
     ...(params.tool.displaySummary ? { displaySummary: params.tool.displaySummary } : {}),
     optional: params.optional,
@@ -161,6 +170,7 @@ export function capturePluginToolDescriptor(params: {
       inputSchema: asJsonObject(params.tool.parameters),
       owner: { kind: "plugin", pluginId: params.pluginId },
       executor: { kind: "plugin", pluginId: params.pluginId, toolName: params.tool.name },
+      ...(availability ? { availability } : {}),
     },
   };
 }
