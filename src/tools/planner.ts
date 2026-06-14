@@ -49,8 +49,8 @@ export function buildToolPlan(options: BuildToolPlanOptions): ToolPlan {
       ...evaluateToolAvailability({ descriptor, context: options.availability }),
     ];
     if (diagnostics.length > 0) {
-      for (const entry of diagnostics) {
-        options.onHiddenDiagnostic?.(entry);
+      for (const diagnostic of diagnostics) {
+        options.onHiddenDiagnostic?.({ descriptor, diagnostic });
       }
       hidden.push({ descriptor, diagnostics });
       continue;

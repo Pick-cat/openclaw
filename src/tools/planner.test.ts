@@ -114,7 +114,7 @@ describe("buildToolPlan", () => {
   });
 
   it("surfaces hidden-tool diagnostics via onHiddenDiagnostic callback", () => {
-    const captured: Array<{ reason: string; message: string }> = [];
+    const captured: Array<{ toolName: string; reason: string; message: string }> = [];
     buildToolPlan({
       descriptors: [
         descriptor("empty_allof", { availability: { allOf: [] } }),
@@ -123,16 +123,32 @@ describe("buildToolPlan", () => {
           availability: { kind: "unknown-kind" } as unknown as ToolDescriptor["availability"],
         }),
       ],
-      onHiddenDiagnostic: (entry) => {
-        captured.push({ reason: entry.reason, message: entry.message });
+      onHiddenDiagnostic: ({ descriptor, diagnostic }) => {
+        captured.push({
+          toolName: descriptor.name,
+          reason: diagnostic.reason,
+          message: diagnostic.message,
+        });
       },
     });
 
     // Descriptors sort alphabetically: bad_expr, empty_allof, empty_anyof
     expect(captured).toEqual([
-      { reason: "unsupported-signal", message: "Unsupported availability signal" },
-      { reason: "unsupported-signal", message: "Empty availability allOf group" },
-      { reason: "unsupported-signal", message: "Empty availability anyOf group" },
+      {
+        toolName: "bad_expr",
+        reason: "unsupported-signal",
+        message: "Unsupported availability signal",
+      },
+      {
+        toolName: "empty_allof",
+        reason: "unsupported-signal",
+        message: "Empty availability allOf group",
+      },
+      {
+        toolName: "empty_anyof",
+        reason: "unsupported-signal",
+        message: "Empty availability anyOf group",
+      },
     ]);
   });
 
