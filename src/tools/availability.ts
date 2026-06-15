@@ -68,16 +68,30 @@ function hasConfiguredValue(params: {
   return true;
 }
 
-function hasAvailabilityExpressionShape(value: ToolAvailabilityExpression): boolean {
-  return "kind" in value || "allOf" in value || "anyOf" in value;
+function hasAvailabilityExpressionShape(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  if ("kind" in obj) {
+    return true;
+  }
+  if ("allOf" in obj) {
+    const allOf = obj.allOf;
+    if (!Array.isArray(allOf)) return false;
+    return allOf.every((entry) => hasAvailabilityExpressionShape(entry));
+  }
+  if ("anyOf" in obj) {
+    const anyOf = obj.anyOf;
+    if (!Array.isArray(anyOf)) return false;
+    return anyOf.every((entry) => hasAvailabilityExpressionShape(entry));
+  }
+  return false;
 }
 
 /** Narrow unknown values to planner availability expressions before descriptor capture. */
 export function isToolAvailabilityExpression(value: unknown): value is ToolAvailabilityExpression {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  return hasAvailabilityExpressionShape(value as ToolAvailabilityExpression);
+  return hasAvailabilityExpressionShape(value);
 }
 
 function diagnostic(
@@ -138,7 +152,7 @@ function evaluateExpression(
     return diagnosticLocal ? [diagnosticLocal] : [];
   }
   if ("allOf" in expression) {
-    if (expression.allOf.length === 0) {
+    if (!Array.isArray(expression.allOf) || expression.allOf.length === 0) {
       return [
         {
           reason: "unsupported-signal",
@@ -149,7 +163,7 @@ function evaluateExpression(
     return expression.allOf.flatMap((entry) => evaluateExpression(entry, context));
   }
   if ("anyOf" in expression) {
-    if (expression.anyOf.length === 0) {
+    if (!Array.isArray(expression.anyOf) || expression.anyOf.length === 0) {
       return [
         {
           reason: "unsupported-signal",

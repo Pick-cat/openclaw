@@ -37,4 +37,26 @@ describe("auditPluginToolDescriptors", () => {
 
     expect(logger.warn).not.toHaveBeenCalled();
   });
+
+  it("does not throw when allOf is not an array", () => {
+    const logger = { warn: vi.fn() };
+    expect(() =>
+      auditPluginToolDescriptors({
+        pluginId: "demo",
+        descriptors: [descriptor("cron", { availability: { allOf: "not-array" } as never })],
+        logger,
+      }),
+    ).not.toThrow();
+  });
+
+  it("does not throw when anyOf is not an array", () => {
+    const logger = { warn: vi.fn() };
+    expect(() =>
+      auditPluginToolDescriptors({
+        pluginId: "demo",
+        descriptors: [descriptor("cron", { availability: { anyOf: "not-array" } as never })],
+        logger,
+      }),
+    ).not.toThrow();
+  });
 });

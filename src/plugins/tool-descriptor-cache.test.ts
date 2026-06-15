@@ -214,4 +214,64 @@ describe("capturePluginToolDescriptor", () => {
 
     expect(captured.descriptor.availability).toBeUndefined();
   });
+
+  it("rejects availability allOf that is not an array", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { allOf: "not-array" },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
+
+  it("rejects availability anyOf that is not an array", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { anyOf: "not-array" },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
+
+  it("rejects availability allOf with non-expression entries", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { allOf: [{ notAnExpression: true }] },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
 });
