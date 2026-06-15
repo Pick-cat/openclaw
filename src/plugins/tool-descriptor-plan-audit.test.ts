@@ -59,4 +59,15 @@ describe("auditPluginToolDescriptors", () => {
       }),
     ).not.toThrow();
   });
+
+  it("does not throw when signal is missing required fields", () => {
+    const logger = { warn: vi.fn() };
+    expect(() =>
+      auditPluginToolDescriptors({
+        pluginId: "demo",
+        descriptors: [descriptor("cron", { availability: { kind: "config" } as never })],
+        logger,
+      }),
+    ).not.toThrow();
+  });
 });

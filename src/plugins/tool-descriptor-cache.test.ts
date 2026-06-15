@@ -274,4 +274,64 @@ describe("capturePluginToolDescriptor", () => {
 
     expect(captured.descriptor.availability).toBeUndefined();
   });
+
+  it("rejects config signal without path", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { kind: "config" },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
+
+  it("rejects auth signal without providerId", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { kind: "auth" },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
+
+  it("rejects unknown signal kind", () => {
+    const tool = {
+      name: "cron",
+      description: "cron tool",
+      parameters: { type: "object", properties: {} },
+      availability: { kind: "unknown-kind" },
+      async execute() {
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    } as unknown as AnyAgentTool;
+
+    const captured = capturePluginToolDescriptor({
+      pluginId: "demo",
+      tool,
+      optional: false,
+    });
+
+    expect(captured.descriptor.availability).toBeUndefined();
+  });
 });
