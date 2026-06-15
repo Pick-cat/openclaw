@@ -108,7 +108,7 @@ export type AppViewState = {
   activityExpandedIds: Set<string>;
   activityAutoFollow: boolean;
   activityAtBottom: boolean;
-  chatStreamSegments: Array<{ text: string; ts: number }>;
+  chatStreamSegments: Array<{ text: string; ts: number; toolCallId?: string }>;
   chatStream: string | null;
   chatStreamStartedAt: number | null;
   chatRunId: string | null;

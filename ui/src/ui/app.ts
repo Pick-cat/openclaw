@@ -263,7 +263,7 @@ export class OpenClawApp extends LitElement {
   @state() activityExpandedIds = new Set<string>();
   @state() activityAutoFollow = true;
   @state() activityAtBottom = true;
-  @state() chatStreamSegments: Array<{ text: string; ts: number }> = [];
+  @state() chatStreamSegments: Array<{ text: string; ts: number; toolCallId?: string }> = [];
   @state() chatStream: string | null = null;
   @state() chatStreamStartedAt: number | null = null;
   @state() chatRunId: string | null = null;

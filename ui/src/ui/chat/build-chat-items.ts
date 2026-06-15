@@ -18,7 +18,7 @@ export type BuildChatItemsProps = {
   sessionKey: string;
   messages: unknown[];
   toolMessages: unknown[];
-  streamSegments: Array<{ text: string; ts: number }>;
+  streamSegments: Array<{ text: string; ts: number; toolCallId?: string }>;
   stream: string | null;
   streamStartedAt: number | null;
   queue?: ChatQueueItem[];
@@ -364,9 +364,31 @@ function timestampAfterVisibleItems(items: ChatItem[], desiredTimestamp: number)
     : desiredTimestamp;
 }
 
-function sortChatItemsByVisibleTime(items: ChatItem[]): ChatItem[] {
+function sortChatItemsByVisibleTime(
+  items: ChatItem[],
+  toolStreamPredecessors: ReadonlyMap<string, string>,
+): ChatItem[] {
+  const timestampsByKey = new Map<string, number>();
+  for (const item of items) {
+    const timestamp = chatItemTimestamp(item);
+    if (timestamp != null) {
+      timestampsByKey.set(item.key, timestamp);
+    }
+  }
   return items
-    .map((item, index) => ({ item, index, timestamp: chatItemTimestamp(item) }))
+    .map((item, index) => {
+      const timestamp = chatItemTimestamp(item);
+      const predecessorKey = toolStreamPredecessors.get(item.key);
+      const predecessorTimestamp = predecessorKey ? timestampsByKey.get(predecessorKey) : null;
+      return {
+        item,
+        index,
+        timestamp:
+          timestamp != null && predecessorTimestamp != null && timestamp <= predecessorTimestamp
+            ? predecessorTimestamp + 0.001
+            : timestamp,
+      };
+    })
     .toSorted((a, b) => {
       if (a.timestamp == null && b.timestamp == null) {
         return a.index - b.index;
@@ -645,6 +667,7 @@ export function buildChatItems(props: BuildChatItemsProps): Array<ChatItem | Mes
   const segments = props.streamSegments ?? [];
   const maxLen = Math.max(segments.length, tools.length);
   let previousAccumulatedStreamText: string | null = null;
+  const toolStreamPredecessors = new Map<string, string>();
   for (let i = 0; i < maxLen; i++) {
     if (i < segments.length) {
       const text = sanitizeStreamText(segments[i].text);
@@ -653,13 +676,29 @@ export function buildChatItems(props: BuildChatItemsProps): Array<ChatItem | Mes
         previousAccumulatedStreamText = text;
       }
       if (visibleText.length > 0) {
+        const streamKey = `stream-seg:${props.sessionKey}:${i}`;
         items.push({
           kind: "stream",
-          key: `stream-seg:${props.sessionKey}:${i}`,
+          key: streamKey,
           text: visibleText,
           startedAt: segments[i].ts,
           isStreaming: false,
         });
+        const toolCallId = segments[i].toolCallId?.trim();
+        if (toolCallId) {
+          const matchingToolIndex = tools.findIndex((tool, toolIndex) => {
+            if (toolIndex < i) {
+              return false;
+            }
+            return asRecord(tool)?.toolCallId === toolCallId;
+          });
+          if (matchingToolIndex >= 0) {
+            toolStreamPredecessors.set(
+              messageKey(tools[matchingToolIndex], matchingToolIndex + history.length),
+              streamKey,
+            );
+          }
+        }
       }
     }
     if (i < tools.length && props.showToolCalls) {
@@ -691,7 +730,9 @@ export function buildChatItems(props: BuildChatItemsProps): Array<ChatItem | Mes
     }
   }
 
-  return groupMessages(collapseSequentialDuplicateMessages(sortChatItemsByVisibleTime(items)));
+  return groupMessages(
+    collapseSequentialDuplicateMessages(sortChatItemsByVisibleTime(items, toolStreamPredecessors)),
+  );
 }
 
 function messageKey(message: unknown, index: number): string {

@@ -283,6 +283,30 @@ describe("buildChatItems", () => {
     ]);
   });
 
+  it("keeps a live tool card after the stream segment that introduced it", () => {
+    const items = buildChatItems(
+      createProps({
+        streamSegments: [{ text: "I will inspect the file.", ts: 2_000, toolCallId: "call-read" }],
+        toolMessages: [
+          {
+            role: "toolResult",
+            toolCallId: "call-read",
+            toolName: "read",
+            content: "file contents",
+            timestamp: 1_000,
+          },
+        ],
+      }),
+    );
+
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      kind: "stream",
+      text: "I will inspect the file.",
+    });
+    expect(messageRecord(requireGroup(items[1])).toolCallId).toBe("call-read");
+  });
+
   it("suppresses metadata-only history messages before grouping", () => {
     const groups = messageGroups({
       messages: [

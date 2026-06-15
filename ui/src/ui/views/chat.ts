@@ -109,7 +109,7 @@ export type ChatProps = {
   messages: unknown[];
   sideResult?: ChatSideResult | null;
   toolMessages: unknown[];
-  streamSegments: Array<{ text: string; ts: number }>;
+  streamSegments: Array<{ text: string; ts: number; toolCallId?: string }>;
   stream: string | null;
   streamStartedAt: number | null;
   assistantAvatarUrl?: string | null;
