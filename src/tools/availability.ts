@@ -78,12 +78,16 @@ function hasAvailabilityExpressionShape(value: unknown): boolean {
   }
   if ("allOf" in obj) {
     const allOf = obj.allOf;
-    if (!Array.isArray(allOf)) return false;
+    if (!Array.isArray(allOf)) {
+      return false;
+    }
     return allOf.every((entry) => hasAvailabilityExpressionShape(entry));
   }
   if ("anyOf" in obj) {
     const anyOf = obj.anyOf;
-    if (!Array.isArray(anyOf)) return false;
+    if (!Array.isArray(anyOf)) {
+      return false;
+    }
     return anyOf.every((entry) => hasAvailabilityExpressionShape(entry));
   }
   return false;
