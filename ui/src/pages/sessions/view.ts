@@ -251,9 +251,12 @@ function renderSessionStatusBadge(row: GatewaySessionRow) {
           ? "muted"
           : "danger";
   const title = `${t("sessionsView.status")}: ${label}`;
+  // Same contract as the goal badge beside it: tabindex lets keyboard users
+  // trigger the tooltip, and aria-label carries the "Status: <label>" the
+  // badge alone would read as a bare word. A span row would make it unreachable.
   return html`
     <openclaw-tooltip .content=${title}>
-      ${renderSettingsStatus({ kind, label })}
+      <span tabindex="0" aria-label=${title}> ${renderSettingsStatus({ kind, label })} </span>
     </openclaw-tooltip>
   `;
 }

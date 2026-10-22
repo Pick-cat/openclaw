@@ -1243,11 +1243,32 @@ describe("sessions view", () => {
       ["settings-status", "settings-status--danger"],
       ["settings-status", "settings-status--ok"],
     ]);
+    const expectedTitles = [
+      "Status: Queued",
+      "Status: Live",
+      "Status: Idle",
+      "Status: Failed",
+      "Status: Done",
+    ];
     expect(
       badges.map(
-        (badge) => (badge.parentElement as (HTMLElement & { content: string }) | null)?.content,
+        (badge) =>
+          (badge.parentElement?.parentElement as (HTMLElement & { content: string }) | null)
+            ?.content,
       ),
-    ).toEqual(["Status: Queued", "Status: Live", "Status: Idle", "Status: Failed", "Status: Done"]);
+    ).toEqual(expectedTitles);
+    // Keyboard and screen-reader users reach the tooltip through the wrapper,
+    // which also names the state the bare badge text does not.
+    expect(
+      badges.map((badge) => {
+        const wrapper = badge.parentElement as HTMLElement;
+        return [
+          wrapper.tagName,
+          wrapper.getAttribute("tabindex"),
+          wrapper.getAttribute("aria-label"),
+        ];
+      }),
+    ).toEqual(expectedTitles.map((title) => ["SPAN", "0", title]));
   });
 
   it("renders session goals in the status cell", async () => {
