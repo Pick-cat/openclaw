@@ -37,9 +37,7 @@ export function SessionStatusBadge(props: { row: GatewaySessionRow }) {
           ? "muted"
           : "danger";
   const detail = () => `${t("sessionsView.status")}: ${label()}`;
-  // Same contract as the goal badge in this row: tabindex lets keyboard users
-  // trigger the tooltip, and aria-label exposes the full "Status: <label>" that
-  // sighted users otherwise only get on hover.
+  // The tooltip needs a focusable trigger for keyboard access.
   return (
     <openclaw-tooltip prop:content={detail()}>
       <span tabindex="0" aria-label={detail()}>

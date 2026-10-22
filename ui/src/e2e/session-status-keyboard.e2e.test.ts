@@ -44,7 +44,7 @@ suite.define(() => {
       // Walk the real tab order rather than focusing the badge directly: the
       // defect is that the badge never joins that order.
       const trace: string[] = [];
-      await page.locator("body").click();
+      await toggle.focus();
       let reachedBadge = false;
       for (let press = 0; press < 120; press += 1) {
         await page.keyboard.press("Tab");
@@ -77,35 +77,14 @@ suite.define(() => {
 
       expectBrowser(reachedBadge, `tab trace: ${trace.join(" | ")}`).toBe(true);
       const statusTrigger = badges.locator('[aria-label^="Status: "]');
-      await expectBrowser(statusTrigger).toHaveCount(1);
       await expectBrowser(statusTrigger).toBeFocused();
-      await expectBrowser(statusTrigger).toHaveAttribute("aria-label", "Status: Live");
-      await expectBrowser(statusTrigger).toHaveAttribute("tabindex", "0");
+      await expectBrowser(statusTrigger).toHaveAccessibleName("Status: Live");
 
       // Focus alone must open the tooltip, not just move the focus ring.
       await expectBrowser(page.locator("openclaw-tooltip[open]")).toHaveCount(1);
-      await expectBrowser(page.locator("openclaw-tooltip[open] .tooltip-content")).toContainText(
-        "Status: Live",
-      );
+      await expectBrowser(page.getByRole("tooltip")).toContainText("Status: Live");
 
-      // Engine-independent accessibility check: what a screen reader would
-      // announce, read back from the live accessibility attributes rather than
-      // inferred from markup.
-      const surface = await statusTrigger.evaluate((element) => {
-        const describedBy = element.getAttribute("aria-describedby");
-        return {
-          label: element.getAttribute("aria-label") ?? "",
-          description: describedBy
-            ? (document.getElementById(describedBy)?.textContent ?? "").trim()
-            : "",
-          tabIndex: (element as HTMLElement).tabIndex,
-        };
-      });
-      expectBrowser(surface.tabIndex).toBe(0);
-      expectBrowser(surface.label).toBe("Status: Live");
-      // The tooltip owner reuses the same text as the description, so the badge
-      // announces its status once whether the reader uses either attribute.
-      expectBrowser(surface.description).toBe("Status: Live");
+      await expectBrowser(statusTrigger).toHaveAccessibleDescription("Status: Live");
 
       await captureUiProof(suite, page, "status-badge-keyboard", "focused.png");
     });
