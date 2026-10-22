@@ -88,6 +88,25 @@ suite.define(() => {
         "Status: Live",
       );
 
+      // Engine-independent accessibility check: what a screen reader would
+      // announce, read back from the live accessibility attributes rather than
+      // inferred from markup.
+      const surface = await statusTrigger.evaluate((element) => {
+        const describedBy = element.getAttribute("aria-describedby");
+        return {
+          label: element.getAttribute("aria-label") ?? "",
+          description: describedBy
+            ? (document.getElementById(describedBy)?.textContent ?? "").trim()
+            : "",
+          tabIndex: (element as HTMLElement).tabIndex,
+        };
+      });
+      expectBrowser(surface.tabIndex).toBe(0);
+      expectBrowser(surface.label).toBe("Status: Live");
+      // The tooltip owner reuses the same text as the description, so the badge
+      // announces its status once whether the reader uses either attribute.
+      expectBrowser(surface.description).toBe("Status: Live");
+
       await captureUiProof(suite, page, "status-badge-keyboard", "focused.png");
     });
   });
