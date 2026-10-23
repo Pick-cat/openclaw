@@ -76,7 +76,7 @@ suite.define(() => {
           const label = element.getAttribute("aria-label") ?? "";
           return {
             tag: element.tagName,
-            className: element.className.toString().slice(0, 40),
+            className: element.className.slice(0, 40),
             label: (label || element.textContent || "").trim().slice(0, 40),
             isValue: element.classList.contains("session-detail-stat__value"),
           };
