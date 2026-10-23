@@ -532,8 +532,17 @@ export function SessionRows(props: SessionsProps & { row: GatewaySessionRow }) {
               {(item) => (
                 <div class="session-detail-stat">
                   <div class="session-detail-stat__label">{t(item().key)}</div>
+                  {/* Keys, model ids and session ids clip at the column width,
+                      so the tooltip is the only full value. It needs a focusable
+                      trigger, and the name has to carry the value it covers. */}
                   <openclaw-tooltip prop:content={item().value}>
-                    <div class="session-detail-stat__value">{item().value}</div>
+                    <div
+                      class="session-detail-stat__value"
+                      tabindex="0"
+                      aria-label={`${t(item().key)}: ${item().value}`}
+                    >
+                      {item().value}
+                    </div>
                   </openclaw-tooltip>
                 </div>
               )}
