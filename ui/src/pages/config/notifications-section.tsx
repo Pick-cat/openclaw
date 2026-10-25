@@ -102,6 +102,8 @@ function NotificationSection(props: {
 
 const NativeTestStatus = (props: { state: "pending" | "sent" | "error"; message?: string }) => (
   <SettingsRow
+    // Errors interrupt; a queued test is polite. Pending announces nothing so retries stay quiet.
+    role={props.state === "error" ? "alert" : props.state === "sent" ? "status" : undefined}
     title={t("configView.notifications.testOutcome")}
     description={props.message}
     control={

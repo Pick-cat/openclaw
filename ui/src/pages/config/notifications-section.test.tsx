@@ -116,6 +116,34 @@ describe("native notification test outcome", () => {
     }
   });
 
+  it("announces a failed native test to assistive technology", () => {
+    const message = "Open System Settings and try again.";
+    const { container } = renderSection({
+      nativeNotifications: { permission: "granted", test: { state: "error", message } },
+    });
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("Test notification failed");
+    expect(alert?.textContent).toContain(message);
+  });
+
+  it("announces a queued native test as status", () => {
+    const { container } = renderSection({
+      nativeNotifications: { permission: "granted", test: { state: "sent" } },
+    });
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      "Test notification queued",
+    );
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("stays silent while a native test is pending", () => {
+    const { container } = renderSection({
+      nativeNotifications: { permission: "granted", test: { state: "pending" } },
+    });
+    expect(container.textContent).toContain("Sending test");
+    expect(container.querySelector('[role="alert"],[role="status"]')).toBeNull();
+  });
+
   it("retires a failed receipt during retry and preserves the send control", async () => {
     const message = "Open System Settings and try again.";
     const [native, setNative] = createSignal<NonNullable<NotificationProps["nativeNotifications"]>>(
