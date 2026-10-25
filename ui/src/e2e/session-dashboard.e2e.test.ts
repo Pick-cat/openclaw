@@ -142,7 +142,7 @@ function workboardCardsListResponse(cards: WorkboardCard[]) {
 suite.define(() => {
   const canvasView = useCanvasSandboxFixture();
   it("reveals granted widget permissions with the keyboard", async () => {
-    const { page, capture, close } = await createProofContext("widget-permissions-keyboard");
+    const { page, close } = await createProofContext();
     await setupDashboard(page, {
       methodResponses: {
         "board.get": {
@@ -165,12 +165,10 @@ suite.define(() => {
       await widget.focus();
       await badge.waitFor({ state: "visible" });
       await page.keyboard.press("Tab");
-      await capture("01-keyboard-focus.png");
       expect(await badge.evaluate((element) => element.matches(":focus"))).toBe(true);
       await tooltip.waitFor({ state: "visible" });
       expect(await tooltip.textContent()).toContain("https://example.com");
       expect(await tooltip.textContent()).toContain("sessions.list");
-      await capture("02-permissions-visible.png");
       await page.keyboard.press("Escape");
       await tooltip.waitFor({ state: "hidden" });
       expect(await badge.evaluate((element) => element.matches(":focus"))).toBe(true);
