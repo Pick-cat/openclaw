@@ -1,20 +1,16 @@
+import "./system-agent-transcript.mocks.test-support.js";
 import { expectDefined } from "@openclaw/normalization-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetCommandQueueStateForTest } from "../../process/command-queue.test-support.js";
 import { systemAgentHandlers, type SystemAgentChatSession } from "./system-agent.js";
 import type { GatewayClient, GatewayRequestContext } from "./types.js";
 
+const { transcriptStoreMocks } = await import("./system-agent-transcript.mocks.test-support.js");
 const inferenceFallbackMocks = vi.hoisted(() => ({
   verifySystemAgentInferenceWithFallback: vi.fn(),
 }));
-const transcriptStoreMocks = vi.hoisted(() => ({
-  appendReset: vi.fn(),
-  appendTurn: vi.fn(),
-  readTranscriptTailAsync: vi
-    .fn<typeof import("../../system-agent/transcript-store.js").readTranscriptTailAsync>()
-    .mockResolvedValue([]),
-}));
 const greetingMocks = vi.hoisted(() => ({
+  createSystemAgentGreetingCache: () => ({ assertCurrent: () => undefined }),
   acknowledgeSystemAgentGreetingDelivery: vi.fn(),
   buildSystemAgentGreetingQuestion: vi.fn(),
   loadSystemAgentGreetingFacts: vi.fn(),
@@ -22,34 +18,12 @@ const greetingMocks = vi.hoisted(() => ({
 }));
 const onboardingWelcomeMocks = vi.hoisted(() => ({ buildOnboardingWelcome: vi.fn() }));
 
-vi.mock("../../system-agent/inference-fallback.js", () => ({
-  verifySystemAgentInferenceWithFallback:
-    inferenceFallbackMocks.verifySystemAgentInferenceWithFallback,
-}));
-// mock-isolation: Keep transcript effects local while checking welcome delivery and acknowledgement ordering.
-vi.mock("../../system-agent/transcript-store.js", () => ({
-  createSystemAgentTranscriptStore: () => ({
-    assertCurrent: () => undefined,
-    appendTurn: transcriptStoreMocks.appendTurn,
-    appendReset: transcriptStoreMocks.appendReset,
-    readTail: (limit: number, afterLastReset = false) =>
-      afterLastReset
-        ? transcriptStoreMocks.readTranscriptTailAsync(limit, { afterLastReset })
-        : transcriptStoreMocks.readTranscriptTailAsync(limit),
-  }),
-  readTranscriptTailAsync: transcriptStoreMocks.readTranscriptTailAsync,
-}));
+// mock-isolation: Welcome-policy tests control inference outcomes without contacting a provider.
+vi.mock("../../system-agent/inference-fallback.js", () => inferenceFallbackMocks);
 // mock-isolation: Use deterministic caretaker facts and avoid provider inference in welcome-policy tests.
-vi.mock("../../system-agent/greeting.js", () => ({
-  createSystemAgentGreetingCache: () => ({ assertCurrent: () => undefined }),
-  acknowledgeSystemAgentGreetingDelivery: greetingMocks.acknowledgeSystemAgentGreetingDelivery,
-  buildSystemAgentGreetingQuestion: greetingMocks.buildSystemAgentGreetingQuestion,
-  loadSystemAgentGreetingFacts: greetingMocks.loadSystemAgentGreetingFacts,
-  resolveSystemAgentGreeting: greetingMocks.resolveSystemAgentGreeting,
-}));
-vi.mock("../../system-agent/onboarding-welcome.js", () => ({
-  buildOnboardingWelcome: onboardingWelcomeMocks.buildOnboardingWelcome,
-}));
+vi.mock("../../system-agent/greeting.js", () => greetingMocks);
+// mock-isolation: Welcome-policy tests supply onboarding output without initializing its runtime.
+vi.mock("../../system-agent/onboarding-welcome.js", () => onboardingWelcomeMocks);
 
 type FakeEngine = ReturnType<typeof makeEngine>;
 
