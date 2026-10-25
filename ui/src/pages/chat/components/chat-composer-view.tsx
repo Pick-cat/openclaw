@@ -455,11 +455,7 @@ export function renderChatComposerView(
             <div class="agent-chat__composer-lede">
               {props.sessionAdmitted === false ? undefined : (
                 <>
-                  <McpAppCatalog
-                    surface="thread"
-                    sessionKey={props.sessionKey}
-                    agentId={props.currentAgentId}
-                  />
+                  <McpAppCatalog surface="thread" sessionKey={props.sessionKey} />
                   <McpAppResources sessionKey={props.sessionKey} agentId={props.currentAgentId} />
                 </>
               )}

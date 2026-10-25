@@ -13,7 +13,7 @@ const CatalogView = lazy(() => import("./mcp-app-catalog-view.tsx"), {
 });
 type McpAppCatalogProps = {
   sessionKey?: string;
-  agentId?: string;
+  // No agentId: the catalog names the agent from sessionKey, so a caller cannot disagree.
   surface?: "global" | "thread" | "sidebar" | "file";
   filePath?: string;
 };
@@ -23,10 +23,7 @@ export function McpAppCatalog(props: McpAppCatalogProps) {
   const surface = () => props.surface ?? "global";
   const catalog = createMcpAppCatalog(
     context,
-    () => ({
-      sessionKey: props.sessionKey || context.gateway.snapshot.sessionKey || "",
-      agentId: props.agentId || context.agentSelection.state.selectedId || undefined,
-    }),
+    () => ({ sessionKey: props.sessionKey || context.gateway.snapshot.sessionKey || "" }),
     () => surface() === "global",
   );
   const entries = (server: McpAppDiscoveredServer) =>

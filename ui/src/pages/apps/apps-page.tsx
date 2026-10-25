@@ -10,7 +10,7 @@ import { registerMcpAppEnglish } from "../../i18n/locales/en-mcp-app.ts";
 import { formatUiError } from "../../lib/format-error.ts";
 import { createMcpAppCatalog } from "../../lib/mcp-app-catalog.ts";
 import { mcpAppRouteFromSearch, resolveMcpAppRouteServer } from "../../lib/mcp-app-route.ts";
-import { projectAgentSelection, projectGateway } from "../../lib/reactive/application.ts";
+import { projectGateway } from "../../lib/reactive/application.ts";
 import { useApplication } from "../../lib/reactive/context.ts";
 import { registerEnglishCatalog, t } from "../../lib/reactive/i18n.ts";
 import { parseAgentSessionKey } from "../../lib/sessions/session-key.ts";
@@ -26,23 +26,22 @@ type AppLaunch = { key: string; detail?: McpAppOpenDetail };
 export function AppsPage(props: { appSearch?: string }) {
   const context = useApplication();
   const gateway = projectGateway(context.gateway);
-  const selection = projectAgentSelection(context.agentSelection);
   const appSearch = createMemo(() => props.appSearch ?? "");
   const appRoute = createMemo(() => mcpAppRouteFromSearch(appSearch()));
   const catalog = createMcpAppCatalog(
     context,
     () => {
       const sessionKey = appRoute() ? gateway.read().snapshot.sessionKey : "";
-      // The Gateway rejects a sessionKey whose agent segment disagrees with agentId, and the
-      // agent selection advances on its own schedule, so a switch could send a stale pair.
-      // Name the agent the key itself carries instead of reading a second source.
-      return { sessionKey, agentId: parseAgentSessionKey(sessionKey)?.agentId };
+      // catalog derives the agent from this key, so the two cannot disagree.
+      return { sessionKey };
     },
     () => true,
   );
   const launch = createMemo((previous: AppLaunch | undefined): AppLaunch => {
     const state = gateway.read();
-    const agentId = selection.read().state.selectedId ?? undefined;
+    // The launch detail reaches mcp.app.launch and mcp.app.settings, which apply the same
+    // session authority as discovery, so it must name the session's own agent too.
+    const agentId = parseAgentSessionKey(state.snapshot.sessionKey)?.agentId;
     const key = JSON.stringify([
       appSearch(),
       state.snapshot.sessionKey,

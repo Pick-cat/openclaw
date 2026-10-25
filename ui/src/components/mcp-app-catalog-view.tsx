@@ -17,6 +17,7 @@ import type {
 import { gatewayPresentationScope } from "../app/gateway-presentation-scope.ts";
 import { UserFacingError } from "../lib/format-error.ts";
 import type { createMcpAppCatalog } from "../lib/mcp-app-catalog.ts";
+import { withSessionAgent } from "../lib/mcp-app-catalog.ts";
 import { mcpAppRouteSearch } from "../lib/mcp-app-route.ts";
 import { useApplication } from "../lib/reactive/context.ts";
 import { t } from "../lib/reactive/i18n.ts";
@@ -74,19 +75,20 @@ export function McpAppCatalogView(
   onSettled(() => () => {
     active = false;
   });
+  // The catalog owner names the agent from this key; pairing a separately-held agent
+  // with it is what let a session switch send a mismatched request.
   const target = () => ({
     sessionKey: props.sessionKey || context.gateway.snapshot.sessionKey || "",
-    agentId: props.agentId || context.agentSelection.state.selectedId || undefined,
   });
   function captureOperation() {
     const client = context.gateway.snapshot.client;
-    const initialTarget = target();
+    const initialTarget = withSessionAgent(target());
     const scope = gatewayPresentationScope(context.gateway).key;
     return {
       client,
       selected: initialTarget,
       current: () => {
-        const destination = target();
+        const destination = withSessionAgent(target());
         return (
           active &&
           context.gateway.snapshot.client === client &&
@@ -132,7 +134,8 @@ export function McpAppCatalogView(
       });
     } else if (
       requestMcpAppOpen(props.host(), {
-        ...target(),
+        // The panel applies the same session authority as discovery before mcp.app.launch.
+        ...withSessionAgent(target()),
         owner: context.gateway.snapshot.client,
         serverName: server.serverName,
         entrypoint,

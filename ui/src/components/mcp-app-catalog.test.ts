@@ -121,9 +121,6 @@ function mountCatalog(context: unknown, initial: Parameters<typeof McpAppCatalog
         get sessionKey() {
           return props().sessionKey;
         },
-        get agentId() {
-          return props().agentId;
-        },
         get surface() {
           return props().surface;
         },
@@ -232,7 +229,7 @@ describe("app launch catalog", () => {
     expect(catalog.textContent).not.toContain("Parts tray");
   });
 
-  it.each(["closed", "agent changed", "conversation changed", "open"] as const)(
+  it.each(["closed", "conversation changed", "open"] as const)(
     "only creates a startup-waiting catalog session while its target remains open (%s)",
     async (lifetime) => {
       vi.useFakeTimers();
@@ -307,7 +304,7 @@ describe("app launch catalog", () => {
           sessions,
           agentSelection: { state: { selectedId: "main" }, subscribe: () => () => {} },
         },
-        { sessionKey: "agent:main:one", agentId: "main" },
+        { sessionKey: "agent:main:one" },
       );
       const catalog = mounted.element;
       await issued.promise;
@@ -317,8 +314,6 @@ describe("app launch catalog", () => {
 
       if (lifetime === "closed") {
         mounted.unmount();
-      } else if (lifetime === "agent changed") {
-        mounted.update({ agentId: "other" });
       } else if (lifetime === "conversation changed") {
         mounted.update({ sessionKey: "agent:main:two" });
       }
@@ -443,7 +438,6 @@ describe("app launch catalog", () => {
     const { element: thread } = mountCatalog(context, {
       surface: "thread",
       sessionKey: "agent:main:one",
-      agentId: "main",
     });
     const resourcesMount = mountSolid(
       () => createComponent(McpAppResources, { sessionKey: "agent:main:one", agentId: "main" }),
@@ -738,7 +732,7 @@ describe("app launch catalog", () => {
       expect(request).toHaveBeenCalledTimes(2);
     },
   );
-  it.each(["unchanged", "session changed", "agent changed"] as const)(
+  it.each(["unchanged", "session changed"] as const)(
     "onboards once without crypto.randomUUID and respects the current target (%s)",
     async (target) => {
       vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
@@ -789,8 +783,6 @@ describe("app launch catalog", () => {
       });
       if (target === "session changed") {
         mounted.update({ sessionKey: "agent:main:two" });
-      } else if (target === "agent changed") {
-        mounted.update({ agentId: "other" });
       }
       onboarding.resolve({});
       await waitForSolid(() => expect(onboardingButton()?.disabled).toBe(false));
@@ -896,7 +888,7 @@ describe("app launch catalog", () => {
         gateway,
         agentSelection: { state: { selectedId: "main" }, subscribe: () => () => {} },
       },
-      { surface: "thread", sessionKey: "agent:main:one", agentId: "main" },
+      { surface: "thread", sessionKey: "agent:main:one" },
     );
     await waitForSolid(() => expect(request).toHaveBeenCalledOnce());
     read.resolve(result);

@@ -14,10 +14,7 @@ type McpAppResourcesProps = { sessionKey: string; agentId: string };
 export function McpAppResources(props: McpAppResourcesProps) {
   let host!: HTMLElement;
   const context = useApplication();
-  const catalog = createMcpAppCatalog(context, () => ({
-    sessionKey: props.sessionKey,
-    agentId: props.agentId,
-  }));
+  const catalog = createMcpAppCatalog(context, () => ({ sessionKey: props.sessionKey }));
   const visible = createMemo(() => catalog.snapshot().servers.some((server) => server.mentionTool));
   // Discovery may temporarily hide this picker; keep its query and expansion.
   const revealed = createMemo((previous = false) => previous || visible());

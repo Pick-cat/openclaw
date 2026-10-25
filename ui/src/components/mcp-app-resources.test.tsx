@@ -39,16 +39,21 @@ function mountResources(
     }),
   };
   const [sessionKey, updateSessionKey] = createSignal("agent:main:main");
+  const [agentId, updateAgentId] = createSignal("main");
   // SAFETY: This component only consumes the Gateway and agent selection capabilities.
   const { container } = mountSolid(
-    () => <McpAppResources sessionKey={sessionKey()} agentId="main" />,
+    () => <McpAppResources sessionKey={sessionKey()} agentId={agentId()} />,
     { wrapper: createSolidApplicationContextProvider(context as ApplicationContext).wrapper },
   );
   const setSessionKey = (value: string) => {
     updateSessionKey(value);
     flush();
   };
-  return { container, request, setSessionKey, publishEvent };
+  const setAgentId = (value: string) => {
+    updateAgentId(value);
+    flush();
+  };
+  return { container, request, setSessionKey, setAgentId, publishEvent };
 }
 
 async function searchResources(container: HTMLElement) {
@@ -351,4 +356,18 @@ it("retains resource errors through edits and collapse but clears them during re
   await waitForSolid(() => expect(container.querySelector('[role="status"]')).not.toBeNull());
   expect(container.querySelector('[role="alert"]')).toBeNull();
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+});
+
+it("discovers with the agent the session key names when the caller passes another agent", async () => {
+  // The sidebar and the Apps catalog pass the selected agent alongside the open session's
+  // key. The selection reconciles on its own subscription, so it can lag a session switch
+  // and pair a fresh key with the previous agent; the Gateway refuses that pair.
+  const { request, setAgentId } = mountResources();
+  setAgentId("claude");
+  await waitForSolid(() =>
+    expect(request).toHaveBeenCalledWith("mcp.app.discover", {
+      sessionKey: "agent:main:main",
+      agentId: "main",
+    }),
+  );
 });

@@ -10,16 +10,33 @@ import { gatewayPresentationScope } from "../app/gateway-presentation-scope.ts";
 import { t } from "../i18n/index.ts";
 import { canCallGatewayMethod } from "./gateway-methods.ts";
 import { projectAgentSelection, projectGateway } from "./reactive/application.ts";
+import { parseAgentSessionKey } from "./sessions/session-key.ts";
 
 const discoveryRequests = new WeakMap<
   GatewayBrowserClient,
   Map<string, Promise<McpAppDiscoverResult>>
 >();
 
+/**
+ * The Gateway refuses a session-scoped MCP request whose agentId disagrees with the agent its
+ * sessionKey names. Callers hold the key and the selected agent in different stores, and the
+ * selection reconciles on its own subscription, so a session switch can pair a fresh key with
+ * the previous agent. Deriving the agent from the key is the one place that keeps them equal.
+ */
+export function withSessionAgent(target: McpAppCatalogSource): McpAppExtensionTarget {
+  return {
+    sessionKey: target.sessionKey,
+    agentId: parseAgentSessionKey(target.sessionKey)?.agentId,
+  };
+}
+
+/** Callers supply the session; this owner names the agent it carries. */
+export type McpAppCatalogSource = { sessionKey: string };
+
 /** Presentation cache only. The Gateway remains the discovery and authorization owner. */
 export function createMcpAppCatalog(
   context: ApplicationContext,
-  target: () => McpAppExtensionTarget,
+  target: () => McpAppCatalogSource,
   prepareSession: () => boolean = () => false,
 ) {
   const gateway = projectGateway(context.gateway);
@@ -42,7 +59,7 @@ export function createMcpAppCatalog(
   const discoveryIdentity = createMemo(() => {
     gateway.read();
     selection.read();
-    const value = target();
+    const value = withSessionAgent(target());
     return JSON.stringify([
       gatewayPresentationScope(context.gateway).key,
       value.agentId,
@@ -96,7 +113,7 @@ export function createMcpAppCatalog(
   async function discover() {
     const { signal } = targetRequest;
     const client = context.gateway.snapshot.client;
-    const destination = target();
+    const destination = withSessionAgent(target());
     if (
       !client ||
       context.gateway.snapshot.phase !== "connected" ||
@@ -129,7 +146,7 @@ export function createMcpAppCatalog(
       context.gateway.snapshot.phase === "connected" &&
       hello === context.gateway.snapshot.hello &&
       scope === gatewayPresentationScope(context.gateway).key &&
-      JSON.stringify(destination) === JSON.stringify(target());
+      JSON.stringify(destination) === JSON.stringify(withSessionAgent(target()));
     try {
       if (prepareSession() && preparedSessionIdentity !== identity) {
         const sessionTarget = { key: destination.sessionKey, agentId: destination.agentId };
