@@ -114,10 +114,11 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
   const visible = createMemo(() => chatPullRequestRows(props));
   // CI polls re-send identical snapshots every few seconds, so this text is derived from check
   // *states*, not from row markup: an unchanged poll yields the same string and therefore no
-  // announcement, while a real transition (pending to failing, or a new failure) changes it once.
+  // announcement, while a real transition changes it once.
   const ciNotice = createMemo(() => {
     let failing = 0;
     let running = 0;
+    let settled = 0;
     for (const entry of visible()) {
       const checks = entry.details?.checks;
       if (!checks) {
@@ -127,6 +128,8 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
         failing += 1;
       } else if (checks.state === "pending" || checks.running > 0) {
         running += 1;
+      } else {
+        settled += 1;
       }
     }
     if (failing > 0) {
@@ -140,6 +143,14 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
         running === 1 ? "chat.pullRequests.ciRunningOne" : "chat.pullRequests.ciRunningMany",
         { count: String(running) },
       );
+    }
+    // Every check settled and none failing. Report completion rather than clearing the region:
+    // an empty region announces nothing, which would silently drop pending->passing and
+    // failing->passing recoveries.
+    if (settled > 0) {
+      return t(settled === 1 ? "chat.pullRequests.ciPassedOne" : "chat.pullRequests.ciPassedMany", {
+        count: String(settled),
+      });
     }
     return undefined;
   });

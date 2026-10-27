@@ -94,14 +94,40 @@ it("announces only the count, and only a real CI transition changes the payload"
   expect(transition).toEqual([]);
   expect(text(countRegion())).toBe("2 pull requests");
   expect(text(ciRegion())).toBe("2 pull requests have failing CI");
+
+  // Completion must be announced, not produced by clearing the region: failing -> passing.
+  await mutationsDuring(ciRegion()!, () => {
+    setRows([row(101, passing), row(102, passing)]);
+    flush();
+  });
+  expect(text(ciRegion())).toBe("CI passed for 2 pull requests");
+});
+
+it("announces CI completion when a pending row settles", async () => {
+  const setRows = mountWithRows([row(101, pending)]);
+  expect(text(ciRegion())).toBe("1 pull request is still running CI");
+
+  const announced: string[] = [];
+  const observer = new MutationObserver(() => announced.push(text(ciRegion())));
+  observer.observe(ciRegion()!, { childList: true, characterData: true, subtree: true });
+
+  setRows([row(101, passing)]);
+  flush();
+  await Promise.resolve();
+  observer.disconnect();
+
+  // The region changed rather than emptying, so the completion is announced once.
+  expect(announced.length).toBeGreaterThan(0);
+  expect(text(ciRegion())).toBe("CI passed for 1 pull request");
+  expect(text(countRegion())).toBe("1 pull request");
 });
 
 it("updates the announced count in place when the row count changes", async () => {
   const setRows = mountWithRows([row(101, passing), row(102, passing)]);
   const live = countRegion()!;
   expect(text(live)).toBe("2 pull requests");
-  // All checks settled, so nothing about CI needs announcing.
-  expect(text(ciRegion())).toBe("");
+  // All checks settled, so the region carries the completion summary rather than going empty.
+  expect(text(ciRegion())).toBe("CI passed for 2 pull requests");
 
   const records = await mutationsDuring(live, () => {
     setRows([row(101, passing)]);

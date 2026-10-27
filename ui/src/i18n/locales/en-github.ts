@@ -95,6 +95,8 @@ const enGitHub = {
       ciFailingMany: "{count} pull requests have failing CI",
       ciRunningOne: "1 pull request is still running CI",
       ciRunningMany: "{count} pull requests are still running CI",
+      ciPassedOne: "CI passed for 1 pull request",
+      ciPassedMany: "CI passed for {count} pull requests",
       checksFailed: "Failed",
       checksRunning: "Running",
       checksSkipped: "Skipped",

@@ -158,6 +158,20 @@ suite.define(() => {
     // The count itself did not change.
     expect(await announcedText(page)).toBe("2 pull requests");
 
+    // Completion is announced rather than produced by clearing the region.
+    await publish([
+      pullRequest(101, { state: "passing", passed: 6, failed: 0, running: 0, skipped: 0 }),
+      pullRequest(102, { state: "passing", passed: 6, failed: 0, running: 0, skipped: 0 }),
+    ]);
+    await expect
+      .poll(() =>
+        page
+          .locator('[aria-live="polite"]', { hasText: /CI passed/ })
+          .first()
+          .textContent(),
+      )
+      .toContain("CI passed for 2 pull requests");
+
     // A count change still updates the count announcement.
     await publish([pullRequest(101)]);
     await expect.poll(() => announcedText(page)).toBe("1 pull request");
