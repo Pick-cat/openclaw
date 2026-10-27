@@ -57,7 +57,7 @@ export function AsyncQuestionSummary(props: {
     <div class="chat-question-summary">
       {/* The announcement region holds text only: focusable controls inside a live region
           get re-announced and interrupt the reader, so the action buttons stay outside it. */}
-      <div role="status" aria-live="polite">
+      <div class="chat-question-summary__announcement" role="status" aria-live="polite">
         <Show
           when={state().unparsedText}
           fallback={
@@ -89,7 +89,12 @@ export function AsyncQuestionSummary(props: {
       <Show when={state().deliveryLabel}>
         {(label) => (
           <div class="chat-question-summary__delivery">
-            <span>{label()}</span>
+            {/* Delivery text is announced; the Retry control beside it is not, because a
+                focusable control inside a live region gets re-announced on every update. */}
+            <div role="status" aria-live="polite">
+              <span>{label()}</span>
+              <Show when={state().queued?.sendError}>{(error) => <div>{error()}</div>}</Show>
+            </div>
             <Show when={state().queued?.sendState === "failed" && props.presentation.retry}>
               <button
                 type="button"
@@ -104,7 +109,6 @@ export function AsyncQuestionSummary(props: {
                 {t("chat.asyncQuestions.retry")}
               </button>
             </Show>
-            <Show when={state().queued?.sendError}>{(error) => <div>{error()}</div>}</Show>
           </div>
         )}
       </Show>
