@@ -204,7 +204,18 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
 
   return (
     <Show when={hasChatPullRequests(props)}>
-      <div class="chat-prs" aria-live="polite">
+      {/* CI status refreshes every few seconds, so the list stays out of the live region:
+          announcing the whole card on each poll would interrupt the reader. Only the row
+          count is announced, and only when it changes. */}
+      <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {visible().length > 0
+          ? t(
+              visible().length === 1 ? "chat.pullRequests.countOne" : "chat.pullRequests.countMany",
+              { count: String(visible().length) },
+            )
+          : undefined}
+      </span>
+      <div class="chat-prs">
         <Show
           when={workRow()}
           fallback={

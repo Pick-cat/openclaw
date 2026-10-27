@@ -89,6 +89,8 @@ const enGitHub = {
       ciMonitoring: "CI monitoring",
       openChecks: "Open checks on GitHub",
       checksPassed: "Passed",
+      countOne: "1 pull request",
+      countMany: "{count} pull requests",
       checksFailed: "Failed",
       checksRunning: "Running",
       checksSkipped: "Skipped",
