@@ -97,6 +97,32 @@ it("keeps delivery status and error announced while Retry stays out of every liv
   expect(retry!.closest('[aria-live="polite"]')).toBeNull();
 });
 
+it("keeps Retry inline beside the delivery label, above the error", () => {
+  draw(twoQuestions, { delivery: failedDelivery(), retry: vi.fn() });
+
+  const labelRegion = liveRegions().find((region) =>
+    (region.textContent ?? "").includes("Answer not sent"),
+  );
+  expect(labelRegion).toBeTruthy();
+  const retry = Array.from(container.querySelectorAll("button")).find((button) =>
+    (button.textContent ?? "").includes("Retry"),
+  );
+  expect(retry).toBeTruthy();
+  const errorRegion = liveRegions().find((region) =>
+    (region.textContent ?? "").includes("Synthetic rejection"),
+  );
+  expect(errorRegion).toBeTruthy();
+
+  const label = labelRegion!.getBoundingClientRect();
+  const button = retry!.getBoundingClientRect();
+  const error = errorRegion!.getBoundingClientRect();
+
+  // Main has always rendered the label and Retry on one line, with the error beneath.
+  expect(button.top).toBeLessThan(label.bottom);
+  expect(button.bottom).toBeGreaterThan(label.top);
+  expect(error.top).toBeGreaterThanOrEqual(Math.max(label.bottom, button.bottom) - 1);
+});
+
 it("keeps the grid row gap between multiple questions", () => {
   draw(twoQuestions);
 
