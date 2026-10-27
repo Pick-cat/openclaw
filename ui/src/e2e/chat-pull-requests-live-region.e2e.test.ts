@@ -100,8 +100,8 @@ type Trace = { count: number; ci: number };
  */
 async function installTrace(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const traced = window as unknown as { __prLiveTrace?: { count: number; ci: number } };
-    traced.__prLiveTrace = { count: 0, ci: 0 };
+    const traced = window as unknown as { prLiveTrace?: { count: number; ci: number } };
+    traced.prLiveTrace = { count: 0, ci: 0 };
     for (const region of Array.from(document.querySelectorAll('[aria-live="polite"]'))) {
       const text = (region.textContent ?? "").replace(/\s+/g, " ").trim();
       const key = text.includes("with CI:")
@@ -113,7 +113,7 @@ async function installTrace(page: Page): Promise<void> {
         continue;
       }
       new MutationObserver((batch) => {
-        const target = traced.__prLiveTrace;
+        const target = traced.prLiveTrace;
         if (target) {
           target[key] += batch.length;
         }
@@ -124,15 +124,15 @@ async function installTrace(page: Page): Promise<void> {
 
 async function readTrace(page: Page): Promise<Trace> {
   return page.evaluate(
-    () => (window as unknown as { __prLiveTrace?: Trace }).__prLiveTrace ?? { count: 0, ci: 0 },
+    () => (window as unknown as { prLiveTrace?: Trace }).prLiveTrace ?? { count: 0, ci: 0 },
   );
 }
 
 async function resetTrace(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const traced = window as unknown as { __prLiveTrace?: Trace };
-    if (traced.__prLiveTrace) {
-      traced.__prLiveTrace = { count: 0, ci: 0 };
+    const traced = window as unknown as { prLiveTrace?: Trace };
+    if (traced.prLiveTrace) {
+      traced.prLiveTrace = { count: 0, ci: 0 };
     }
   });
 }
