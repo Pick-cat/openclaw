@@ -115,6 +115,15 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
   // CI polls re-send identical snapshots every few seconds, so this text is derived from check
   // *states*, not from row markup: an unchanged poll yields the same string and therefore no
   // announcement, while a real transition changes it once.
+  //
+  // Every bucket is reported, not just the worst one. Collapsing to a single category masked
+  // lower-priority changes: with one row failing and another still running, the running row's
+  // completion left "1 failing" unchanged and the announcement never happened.
+  //
+  // Accepted edge case: two rows swapping buckets in the same poll (one finishing while another
+  // starts) leave the per-bucket counts identical, so that pair is not announced. The summary
+  // stays accurate - it is a state snapshot, not an event log - and the alternative is diffing
+  // per-row identity, more machinery than this list justifies.
   const ciNotice = createMemo(() => {
     let failing = 0;
     let running = 0;
@@ -132,27 +141,47 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
         settled += 1;
       }
     }
+    const total = failing + running + settled;
+    if (total === 0) {
+      return undefined;
+    }
+    const parts: string[] = [];
     if (failing > 0) {
-      return t(
-        failing === 1 ? "chat.pullRequests.ciFailingOne" : "chat.pullRequests.ciFailingMany",
-        { count: String(failing) },
+      parts.push(
+        t(
+          failing === 1
+            ? "chat.pullRequests.ciFailingPartOne"
+            : "chat.pullRequests.ciFailingPartMany",
+          { count: String(failing) },
+        ),
       );
     }
     if (running > 0) {
-      return t(
-        running === 1 ? "chat.pullRequests.ciRunningOne" : "chat.pullRequests.ciRunningMany",
-        { count: String(running) },
+      parts.push(
+        t(
+          running === 1
+            ? "chat.pullRequests.ciRunningPartOne"
+            : "chat.pullRequests.ciRunningPartMany",
+          { count: String(running) },
+        ),
       );
     }
-    // Every check settled and none failing. Report completion rather than clearing the region:
-    // an empty region announces nothing, which would silently drop pending->passing and
-    // failing->passing recoveries.
+    // Completion is reported explicitly: an empty live region announces nothing, so dropping the
+    // settled bucket would silently swallow passing and recovery transitions.
     if (settled > 0) {
-      return t(settled === 1 ? "chat.pullRequests.ciPassedOne" : "chat.pullRequests.ciPassedMany", {
-        count: String(settled),
-      });
+      parts.push(
+        t(
+          settled === 1
+            ? "chat.pullRequests.ciPassedPartOne"
+            : "chat.pullRequests.ciPassedPartMany",
+          { count: String(settled) },
+        ),
+      );
     }
-    return undefined;
+    return t(total === 1 ? "chat.pullRequests.ciSummaryOne" : "chat.pullRequests.ciSummaryMany", {
+      count: String(total),
+      parts: parts.join(", "),
+    });
   });
   const recovery = () =>
     !props.publishedOnly && retained() && (!published() || props.publication?.error)
