@@ -54,34 +54,38 @@ export function AsyncQuestionSummary(props: {
     };
   });
   return (
-    <div class="chat-question-summary" role="status" aria-live="polite">
-      <Show
-        when={state().unparsedText}
-        fallback={
-          <For each={props.questions.questions}>
-            {(question, index) => (
-              <div>
-                <strong>{question.title}</strong>
+    <div class="chat-question-summary">
+      {/* The announcement region holds text only: focusable controls inside a live region
+          get re-announced and interrupt the reader, so the action buttons stay outside it. */}
+      <div role="status" aria-live="polite">
+        <Show
+          when={state().unparsedText}
+          fallback={
+            <For each={props.questions.questions}>
+              {(question, index) => (
                 <div>
-                  {state().answers
-                    ? questionDraftValues(state().answers?.get(String(index())), {}).join(", ")
-                    : t(
-                        state().reopening
-                          ? "chat.asyncQuestions.reopening"
-                          : state().dismissed
-                            ? "chat.asyncQuestions.dismissed"
-                            : state().archived
-                              ? "chat.asyncQuestions.archived"
-                              : "chat.asyncQuestions.inComposer",
-                      )}
+                  <strong>{question.title}</strong>
+                  <div>
+                    {state().answers
+                      ? questionDraftValues(state().answers?.get(String(index())), {}).join(", ")
+                      : t(
+                          state().reopening
+                            ? "chat.asyncQuestions.reopening"
+                            : state().dismissed
+                              ? "chat.asyncQuestions.dismissed"
+                              : state().archived
+                                ? "chat.asyncQuestions.archived"
+                                : "chat.asyncQuestions.inComposer",
+                        )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </For>
-        }
-      >
-        {(text) => <div class="chat-question-summary__prompt">{text()}</div>}
-      </Show>
+              )}
+            </For>
+          }
+        >
+          {(text) => <div class="chat-question-summary__prompt">{text()}</div>}
+        </Show>
+      </div>
       <Show when={state().deliveryLabel}>
         {(label) => (
           <div class="chat-question-summary__delivery">
