@@ -20,9 +20,20 @@ afterEach(() => {
 
 type Row = ReturnType<typeof pullRequest>;
 
+const passing = { state: "passing", passed: 5, failed: 0, skipped: 1, running: 0 } as const;
+const pending = { state: "pending", passed: 4, failed: 0, skipped: 0, running: 2 } as const;
+const failing = { state: "failing", passed: 4, failed: 2, skipped: 0, running: 0 } as const;
+
+const row = (number: number, checks: Row["checks"]): Row =>
+  pullRequest({
+    number,
+    url: `https://github.com/openclaw/openclaw/pull/${number}`,
+    checks,
+  });
+
 /**
  * Mounts once and drives the component through its real reactive updates. Re-mounting on each
- * "refresh" would destroy and recreate the live region, which cannot say anything about whether a
+ * "refresh" would destroy and recreate the live regions, which cannot say anything about whether a
  * poll re-announces; only an in-place update can.
  */
 function mountWithRows(initial: Row[]) {
@@ -35,19 +46,16 @@ function mountWithRows(initial: Row[]) {
   return setRows;
 }
 
-function region(): HTMLElement {
-  const found = container.querySelector<HTMLElement>('[aria-live="polite"]');
-  if (!found) {
-    throw new Error("expected the pull request list to expose a polite live region");
-  }
-  return found;
+function regions(): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>('[aria-live="polite"]'));
 }
 
-function rowLinks(): number {
-  return container.querySelectorAll(".chat-prs a").length;
-}
+const countRegion = () => regions()[0];
+const ciRegion = () => regions()[1];
+const text = (node: HTMLElement | undefined) =>
+  (node?.textContent ?? "").replace(/\s+/g, " ").trim();
 
-/** Records every DOM mutation the browser reports inside the live region. */
+/** Records every DOM mutation the browser reports inside `target`. */
 async function mutationsDuring(target: Node, act: () => void): Promise<MutationRecord[]> {
   const records: MutationRecord[] = [];
   const observer = new MutationObserver((batch) => records.push(...batch));
@@ -58,64 +66,49 @@ async function mutationsDuring(target: Node, act: () => void): Promise<MutationR
   return records;
 }
 
-const failingChecks = { state: "failing", passed: 3, failed: 2, skipped: 1, running: 0 } as const;
+it("announces only the count, and only a real CI transition changes the payload", async () => {
+  const setRows = mountWithRows([row(101, pending), row(102, pending)]);
 
-it("announces only the count and stays silent through a CI-only refresh", async () => {
-  const first = pullRequest();
-  const second = pullRequest({
-    number: 103470,
-    url: "https://github.com/openclaw/openclaw/pull/103470",
-  });
-  const setRows = mountWithRows([first, second]);
+  expect(container.querySelectorAll(".chat-prs a").length).toBeGreaterThanOrEqual(2);
+  expect(text(countRegion())).toBe("2 pull requests");
+  expect(text(ciRegion())).toBe("2 pull requests are still running CI");
+  // Neither region carries interactive content.
+  expect(countRegion()!.querySelectorAll("a, button").length).toBe(0);
+  expect(ciRegion()!.querySelectorAll("a, button").length).toBe(0);
 
-  expect(rowLinks()).toBeGreaterThanOrEqual(2);
-
-  // The announced payload is the count alone: no row links, no controls.
-  const live = region();
-  expect((live.textContent ?? "").trim()).toBe("2 pull requests");
-  expect(live.querySelectorAll("a, button").length).toBe(0);
-
-  // A CI-only refresh: the same rows come back with different check totals.
-  const rowsBefore = container.querySelector(".chat-prs")!.innerHTML;
-  const records = await mutationsDuring(live, () => {
-    setRows([
-      pullRequest({ checks: failingChecks }),
-      pullRequest({
-        number: 103470,
-        url: "https://github.com/openclaw/openclaw/pull/103470",
-        checks: failingChecks,
-      }),
-    ]);
+  // An identical poll: same rows, same check snapshots. Nothing may be announced.
+  const countBefore = text(countRegion());
+  const identical = await mutationsDuring(countRegion()!, () => {
+    setRows([row(101, pending), row(102, pending)]);
     flush();
   });
+  expect(identical).toEqual([]);
+  expect(text(countRegion())).toBe(countBefore);
 
-  // The rows really did re-render with the new check state...
-  expect(rowLinks()).toBeGreaterThanOrEqual(2);
-  expect(container.querySelector(".chat-prs")!.innerHTML).not.toBe(rowsBefore);
-  // ...but the live region neither changed nor was replaced, so nothing is re-announced.
-  expect(records.filter((record) => record.type !== "attributes")).toEqual([]);
-  expect(region()).toBe(live);
-  expect(live.isConnected).toBe(true);
-  expect((live.textContent ?? "").trim()).toBe("2 pull requests");
+  // A real transition (pending -> failing) is worth exactly one announcement, and it is the CI
+  // region that carries it; the count did not change, so that region stays untouched.
+  const transition = await mutationsDuring(countRegion()!, () => {
+    setRows([row(101, failing), row(102, failing)]);
+    flush();
+  });
+  expect(transition).toEqual([]);
+  expect(text(countRegion())).toBe("2 pull requests");
+  expect(text(ciRegion())).toBe("2 pull requests have failing CI");
 });
 
 it("updates the announced count in place when the row count changes", async () => {
-  const first = pullRequest();
-  const second = pullRequest({
-    number: 103470,
-    url: "https://github.com/openclaw/openclaw/pull/103470",
-  });
-  const setRows = mountWithRows([first, second]);
-  const live = region();
-  expect((live.textContent ?? "").trim()).toBe("2 pull requests");
+  const setRows = mountWithRows([row(101, passing), row(102, passing)]);
+  const live = countRegion()!;
+  expect(text(live)).toBe("2 pull requests");
+  // All checks settled, so nothing about CI needs announcing.
+  expect(text(ciRegion())).toBe("");
 
   const records = await mutationsDuring(live, () => {
-    setRows([first]);
+    setRows([row(101, passing)]);
     flush();
   });
 
-  // The count changed, so the region did update - and it stayed the same element.
   expect(records.length).toBeGreaterThan(0);
-  expect(region()).toBe(live);
-  expect((live.textContent ?? "").trim()).toBe("1 pull request");
+  expect(countRegion()).toBe(live);
+  expect(text(live)).toBe("1 pull request");
 });

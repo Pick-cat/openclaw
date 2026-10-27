@@ -121,7 +121,7 @@ async function politeRegions(page: Page): Promise<Array<{ role: string; name: st
 }
 
 suite.define(() => {
-  it("announces only the row count on the shipped chat page and stays silent through a CI-only refresh", async () => {
+  it("announces the count, stays silent through an identical poll, and announces a real CI change once", async () => {
     const { page, publish } = await setup();
 
     await publish([pullRequest(101), pullRequest(102)]);
@@ -132,23 +132,33 @@ suite.define(() => {
     expect(await liveRegion(page).locator("a, button").count()).toBe(0);
 
     // Chromium's accessibility tree exposes a polite live region for this surface.
-    const before = await politeRegions(page);
-    expect(before.length).toBeGreaterThan(0);
-    expect(before.some((region) => region.role === "status")).toBe(true);
+    expect((await politeRegions(page)).some((region) => region.role === "status")).toBe(true);
 
-    // CI-only refresh: same two rows, different check totals.
+    // An identical poll re-sends the same snapshot; nothing may be announced.
     const rowsBefore = await page.locator(".chat-prs").innerHTML();
+    const announcedBefore = await announcedText(page);
+    await publish([pullRequest(101), pullRequest(102)]);
+    expect(await announcedText(page)).toBe(announcedBefore);
+    expect(await page.locator(".chat-prs").innerHTML()).toBe(rowsBefore);
+
+    // A genuine transition (pending -> failing) is announced once, through the CI region.
     await publish([
       pullRequest(101, { state: "failing", passed: 3, failed: 1, running: 0, skipped: 0 }),
       pullRequest(102, { state: "failing", passed: 3, failed: 1, running: 0, skipped: 0 }),
     ]);
     await expect.poll(() => page.locator(".chat-prs").innerHTML()).not.toBe(rowsBefore);
-
-    // The list re-rendered, but the announced region did not change.
+    await expect
+      .poll(() =>
+        page
+          .locator('[aria-live="polite"]', { hasText: /failing CI/ })
+          .first()
+          .textContent(),
+      )
+      .toContain("2 pull requests have failing CI");
+    // The count itself did not change.
     expect(await announcedText(page)).toBe("2 pull requests");
-    expect((await politeRegions(page)).length).toBeGreaterThan(0);
 
-    // A count change does update the announced payload.
+    // A count change still updates the count announcement.
     await publish([pullRequest(101)]);
     await expect.poll(() => announcedText(page)).toBe("1 pull request");
   });

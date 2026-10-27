@@ -112,6 +112,37 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
     props.publishedOnly || props.branchDismissed ? undefined : props.branch;
   const workRow = () => !props.publishedOnly && showWorkRow(props);
   const visible = createMemo(() => chatPullRequestRows(props));
+  // CI polls re-send identical snapshots every few seconds, so this text is derived from check
+  // *states*, not from row markup: an unchanged poll yields the same string and therefore no
+  // announcement, while a real transition (pending to failing, or a new failure) changes it once.
+  const ciNotice = createMemo(() => {
+    let failing = 0;
+    let running = 0;
+    for (const entry of visible()) {
+      const checks = entry.details?.checks;
+      if (!checks) {
+        continue;
+      }
+      if (checks.state === "failing" || checks.failed > 0) {
+        failing += 1;
+      } else if (checks.state === "pending" || checks.running > 0) {
+        running += 1;
+      }
+    }
+    if (failing > 0) {
+      return t(
+        failing === 1 ? "chat.pullRequests.ciFailingOne" : "chat.pullRequests.ciFailingMany",
+        { count: String(failing) },
+      );
+    }
+    if (running > 0) {
+      return t(
+        running === 1 ? "chat.pullRequests.ciRunningOne" : "chat.pullRequests.ciRunningMany",
+        { count: String(running) },
+      );
+    }
+    return undefined;
+  });
   const recovery = () =>
     !props.publishedOnly && retained() && (!published() || props.publication?.error)
       ? props.publication
@@ -214,6 +245,10 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
               { count: String(visible().length) },
             )
           : undefined}
+      </span>
+      {/* A genuine CI transition still deserves one announcement; identical polls do not. */}
+      <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {ciNotice()}
       </span>
       <div class="chat-prs">
         <Show
