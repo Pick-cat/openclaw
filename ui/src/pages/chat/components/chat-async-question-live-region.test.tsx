@@ -1,6 +1,7 @@
 import { flush } from "solid-js";
 /* @vitest-environment jsdom */
 import { afterEach, expect, it, vi } from "vitest";
+import type { ChatQueueItem } from "../../../lib/chat/chat-types.ts";
 import { mountSolid } from "../../../test-helpers/mount-solid.ts";
 import { AsyncQuestionSummary } from "./chat-async-question-summary.tsx";
 import type { AsyncQuestionPresentation, AsyncQuestions } from "./chat-async-question.types.ts";
@@ -32,10 +33,8 @@ const question: AsyncQuestions = {
 function draw(overrides: Partial<AsyncQuestionPresentation> = {}) {
   const presentation = { ...basePresentation(), ...overrides };
   const mount = mountSolid(
-    <AsyncQuestionSummary questions={question} presentation={presentation} />,
-    {
-      container,
-    },
+    () => <AsyncQuestionSummary questions={question} presentation={presentation} />,
+    { container },
   );
   flush();
   return { mount, presentation };
@@ -51,7 +50,7 @@ afterEach(() => {
 
 it("announces the delivery status and error inside a live region, keeping Retry outside it", () => {
   const retry = vi.fn();
-  const delivery = new Map([
+  const delivery = new Map<string, ChatQueueItem>([
     [
       "question-1",
       {
@@ -81,7 +80,7 @@ it("announces the delivery status and error inside a live region, keeping Retry 
 });
 
 it("keeps delivery error updates inside the announced region when a queued answer fails", () => {
-  const delivery = new Map([
+  const delivery = new Map<string, ChatQueueItem>([
     [
       "question-1",
       {
