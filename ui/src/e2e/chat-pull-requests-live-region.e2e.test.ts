@@ -19,6 +19,32 @@ type Checks = NonNullable<ControlUiSessionPullRequest["checks"]>;
 const running: Checks = { state: "pending", passed: 4, failed: 0, running: 2, skipped: 0 };
 const failing: Checks = { state: "failing", passed: 3, failed: 1, running: 0, skipped: 0 };
 const passing: Checks = { state: "passing", passed: 6, failed: 0, running: 0, skipped: 0 };
+const progressed: Checks = { state: "pending", passed: 5, failed: 0, running: 1, skipped: 0 };
+
+const running101 =
+  "openclaw/openclaw#101: CI checks running (4 passed, 0 failed, 2 running, 0 skipped)";
+const running102 =
+  "openclaw/openclaw#102: CI checks running (4 passed, 0 failed, 2 running, 0 skipped)";
+const progressed101 =
+  "openclaw/openclaw#101: CI checks running (5 passed, 0 failed, 1 running, 0 skipped)";
+const failing101 =
+  "openclaw/openclaw#101: CI checks failing (3 passed, 1 failed, 0 running, 0 skipped)";
+const failing102 =
+  "openclaw/openclaw#102: CI checks failing (3 passed, 1 failed, 0 running, 0 skipped)";
+const passing101 =
+  "openclaw/openclaw#101: CI checks passing (6 passed, 0 failed, 0 running, 0 skipped)";
+const passing102 =
+  "openclaw/openclaw#102: CI checks passing (6 passed, 0 failed, 0 running, 0 skipped)";
+
+function ciSummary(...parts: string[]): string {
+  return (
+    parts.length +
+    " pull request" +
+    (parts.length === 1 ? "" : "s") +
+    " with CI: " +
+    parts.join("; ")
+  );
+}
 
 function pullRequest(number: number, checks: Checks): ControlUiSessionPullRequest {
   return {
@@ -168,13 +194,13 @@ async function politeRegions(page: Page): Promise<Array<{ role: string; name: st
 }
 
 suite.define(() => {
-  it("keeps both announced regions silent on identical polls and announces every real transition", async () => {
+  it("announces per-PR CI changes without repeating identical polling snapshots", async () => {
     const { page, publish } = await setup();
     const steps: Array<{ step: string; count: number; ci: number }> = [];
 
     await publish([pullRequest(101, running), pullRequest(102, running)]);
     await expect.poll(async () => (await listRegions(page)).count).toBe("2 pull requests");
-    expect((await listRegions(page)).ci).toBe("2 pull requests with CI: 2 still running");
+    expect((await listRegions(page)).ci).toBe(ciSummary(running101, running102));
     expect(await page.locator(".chat-prs a").count()).toBeGreaterThanOrEqual(2);
 
     // Neither region carries interactive content.
@@ -199,26 +225,48 @@ suite.define(() => {
     steps.push({ step: "identical poll", ...trace });
     expect(trace).toEqual({ count: 0, ci: 0 });
 
+    // Progress within one pending PR must not disappear behind unchanged PR-state buckets.
+    await resetTrace(page);
+    await publish([pullRequest(101, progressed), pullRequest(102, running)]);
+    await expect
+      .poll(async () => (await listRegions(page)).ci)
+      .toBe(ciSummary(progressed101, running102));
+    const progressTrace = await readTrace(page);
+    steps.push({ step: "check progress while pending", ...progressTrace });
+    expect(progressTrace.count).toBe(0);
+    expect(progressTrace.ci).toBeGreaterThan(0);
+
     // 2. Mixed state: one row starts failing while the other keeps running.
     await resetTrace(page);
     await publish([pullRequest(101, failing), pullRequest(102, running)]);
     await expect
       .poll(async () => (await listRegions(page)).ci)
-      .toBe("2 pull requests with CI: 1 failing, 1 still running");
+      .toBe(ciSummary(failing101, running102));
     trace = await readTrace(page);
     steps.push({ step: "running -> failing (mixed)", ...trace });
     expect(trace.count).toBe(0);
     expect(trace.ci).toBeGreaterThan(0);
 
     // 3. The row that was masked before: it finishes while another row stays failing, so the
-    //    failing count never changes and only a per-bucket summary can announce this.
+    //    failing count never changes, but the other PR still needs its completion announced.
     await resetTrace(page);
     await publish([pullRequest(101, failing), pullRequest(102, passing)]);
     await expect
       .poll(async () => (await listRegions(page)).ci)
-      .toBe("2 pull requests with CI: 1 failing, 1 passed");
+      .toBe(ciSummary(failing101, passing102));
     trace = await readTrace(page);
     steps.push({ step: "running -> passed beside a failure", ...trace });
+    expect(trace.count).toBe(0);
+    expect(trace.ci).toBeGreaterThan(0);
+
+    // Equal aggregate counts must not conceal two PRs exchanging failed/passed states.
+    await resetTrace(page);
+    await publish([pullRequest(101, passing), pullRequest(102, failing)]);
+    await expect
+      .poll(async () => (await listRegions(page)).ci)
+      .toBe(ciSummary(passing101, failing102));
+    trace = await readTrace(page);
+    steps.push({ step: "PRs exchange failing and passing states", ...trace });
     expect(trace.count).toBe(0);
     expect(trace.ci).toBeGreaterThan(0);
 
@@ -227,7 +275,7 @@ suite.define(() => {
     await publish([pullRequest(101, passing), pullRequest(102, passing)]);
     await expect
       .poll(async () => (await listRegions(page)).ci)
-      .toBe("2 pull requests with CI: 2 passed");
+      .toBe(ciSummary(passing101, passing102));
     trace = await readTrace(page);
     steps.push({ step: "failing -> passed", ...trace });
     expect(trace.count).toBe(0);
@@ -237,9 +285,7 @@ suite.define(() => {
     await resetTrace(page);
     await publish([pullRequest(101, passing)]);
     await expect.poll(async () => (await listRegions(page)).count).toBe("1 pull request");
-    await expect
-      .poll(async () => (await listRegions(page)).ci)
-      .toBe("1 pull request with CI: 1 passed");
+    await expect.poll(async () => (await listRegions(page)).ci).toBe(ciSummary(passing101));
     trace = await readTrace(page);
     steps.push({ step: "row removed", ...trace });
     expect(trace.count).toBeGreaterThan(0);

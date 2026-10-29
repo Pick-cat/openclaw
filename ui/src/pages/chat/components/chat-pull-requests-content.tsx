@@ -112,76 +112,34 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
     props.publishedOnly || props.branchDismissed ? undefined : props.branch;
   const workRow = () => !props.publishedOnly && showWorkRow(props);
   const visible = createMemo(() => chatPullRequestRows(props));
-  // CI polls re-send identical snapshots every few seconds, so this text is derived from check
-  // *states*, not from row markup: an unchanged poll yields the same string and therefore no
-  // announcement, while a real transition changes it once.
-  //
-  // Every bucket is reported, not just the worst one. Collapsing to a single category masked
-  // lower-priority changes: with one row failing and another still running, the running row's
-  // completion left "1 failing" unchanged and the announcement never happened.
-  //
-  // Accepted edge case: two rows swapping buckets in the same poll (one finishing while another
-  // starts) leave the per-bucket counts identical, so that pair is not announced. The summary
-  // stays accurate - it is a state snapshot, not an event log - and the alternative is diffing
-  // per-row identity, more machinery than this list justifies.
+  // Preserve each PR's identity and check counts: aggregate buckets can stay unchanged while
+  // PRs exchange states or checks make progress. Stable URL order keeps row reordering and
+  // identical polling snapshots from changing the announced text.
   const ciNotice = createMemo(() => {
-    let failing = 0;
-    let running = 0;
-    let settled = 0;
-    for (const entry of visible()) {
-      const checks = entry.details?.checks;
-      if (!checks) {
-        continue;
-      }
-      if (checks.state === "failing" || checks.failed > 0) {
-        failing += 1;
-      } else if (checks.state === "pending" || checks.running > 0) {
-        running += 1;
-      } else {
-        settled += 1;
-      }
-    }
-    const total = failing + running + settled;
-    if (total === 0) {
+    const parts = visible()
+      .toSorted((left, right) => left.url.localeCompare(right.url))
+      .flatMap((entry) => {
+        const checks = entry.details?.checks;
+        return checks
+          ? [
+              t("chat.pullRequests.ciSummaryItem", {
+                reference: entry.reference,
+                state: t(CHECK_LABEL_KEYS[checks.state]),
+                passed: String(checks.passed),
+                failed: String(checks.failed),
+                running: String(checks.running),
+                skipped: String(checks.skipped),
+              }),
+            ]
+          : [];
+      });
+    if (parts.length === 0) {
       return undefined;
     }
-    const parts: string[] = [];
-    if (failing > 0) {
-      parts.push(
-        t(
-          failing === 1
-            ? "chat.pullRequests.ciFailingPartOne"
-            : "chat.pullRequests.ciFailingPartMany",
-          { count: String(failing) },
-        ),
-      );
-    }
-    if (running > 0) {
-      parts.push(
-        t(
-          running === 1
-            ? "chat.pullRequests.ciRunningPartOne"
-            : "chat.pullRequests.ciRunningPartMany",
-          { count: String(running) },
-        ),
-      );
-    }
-    // Completion is reported explicitly: an empty live region announces nothing, so dropping the
-    // settled bucket would silently swallow passing and recovery transitions.
-    if (settled > 0) {
-      parts.push(
-        t(
-          settled === 1
-            ? "chat.pullRequests.ciPassedPartOne"
-            : "chat.pullRequests.ciPassedPartMany",
-          { count: String(settled) },
-        ),
-      );
-    }
-    return t(total === 1 ? "chat.pullRequests.ciSummaryOne" : "chat.pullRequests.ciSummaryMany", {
-      count: String(total),
-      parts: parts.join(", "),
-    });
+    return t(
+      parts.length === 1 ? "chat.pullRequests.ciSummaryOne" : "chat.pullRequests.ciSummaryMany",
+      { count: String(parts.length), parts: parts.join("; ") },
+    );
   });
   const recovery = () =>
     !props.publishedOnly && retained() && (!published() || props.publication?.error)
@@ -275,9 +233,8 @@ export function ChatPullRequestsContent(props: ChatPullRequestsProps) {
 
   return (
     <Show when={hasChatPullRequests(props)}>
-      {/* CI status refreshes every few seconds, so the list stays out of the live region:
-          announcing the whole card on each poll would interrupt the reader. Only the row
-          count is announced, and only when it changes. */}
+      {/* Keep interactive rows outside live regions. The count and per-PR CI snapshots have
+          separate regions, and identical polling snapshots leave their text unchanged. */}
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {visible().length > 0
           ? t(
